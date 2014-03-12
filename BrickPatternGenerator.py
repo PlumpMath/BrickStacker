@@ -11,22 +11,23 @@ DebugList = []
 
 class Brick3D:
 	#each 3d brick is defined as a point, direction, and course curve
-	def __init__(self, point, direction, curve):
+	#constructor
+	def __init__(self, point, rotation, curve):
 		#self.brickWidth = brickWidth
 		self.brickCenter = point
-		self.brickDirection = direction
+		self.brickRotation = rotation
 		self.courseCurve = curve
 		self.isCurveClosed = rs.IsCurveClosed(curve)
 		self.curveParameter = rs.CurveClosestPoint(curve, point)
 		self.curveLen = rs.CurveLength(curve)
 
 	def setLocationByParameter(self, parameter):
-		self.brickCenter = rs.EvaluateCurve(self.curve, parameter)
+		self.brickCenter = rs.EvaluateCurve(self.courseCurve, parameter)
 		self.curveParameter = parameter
 
 	def setLocationByPoint(self, point):
 		self.brickCenter = point
-		self.curveParameter = rs.CurveClosestPoint(curve, point)
+		self.curveParameter = rs.CurveClosestPoint(self.courseCurve, point)
 
 	def getLocationByParameter(self):
 		return self.curveParameter
@@ -150,7 +151,9 @@ def placeNormalCourse(index, brickn):
 	thisBrickLocation = 0
 	for i in xrange(brickn):
 		# add a brick
-		BrickList[index].append(Brick(curvelen, thisBrickLocation, 0))
+		newBrick = Brick3D([0,0,0], 0, ContourCurves[index])
+		newBrick.setLocationByParameter(thisBrickLocation)
+		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
 		thisBrickLocation += BrickWidth + averageGap
@@ -158,38 +161,50 @@ def placeNormalCourse(index, brickn):
 def layBrickCourse(index):
 	global BrickList
 	
-	#okay, so place bricks.
-	#look at the line below -- unless we're the lowest line, natch
-	
-	#how many bricks can we make?
-	brickn = decideBrickNum(index)
-	curvelen = rs.CurveLength(ContourCurves[index])
-	isCurveClosed = rs.IsCurveClosed(ContourCurves[index])
-	
 	print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>INDEX", index
-	
+	brickn = decideBrickNum(index)
+
 	if(index == 0):
 		#what the what, we're the lowest line
+		#how many bricks can we make?
 		placeNormalCourse(index, brickn)	
 				
 	else:
-		#for the time being let's just pretend that the ideal point to put the brick
-		#is smack dab bang in the middle of the two closest bricks
-		#or in the middle of the two closest points of the course below us
 		thisBrickLocation = 0
 		brickLocations = []
 		brickGap = 0
-		#print "lowerbricks=",map(lambda x: x.brickCenter, BrickList[index-1])
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
 
 			#if we have two or more bricks on our floor below us
 			if(len(BrickList[index - 1]) >= 2):
+
+			#PROCESS:
+				# set a provisional point
+				# find two closest bricks
+				# find where to place bricks on top of these two closest bricks
+				# place brick
+				# move provisional point to new location
 				#okay, try to place the brick right here.
 
-				#for this brick, find the two closest lower bricks, 
-				closestBricks = getClosestTwoBricks(thisBrickLocation , index - 1, isCurveClosed, curvelen)
-				#print "the two closest =", closestBricks
+				# set a provisional point
+				# ====> thisBrickLocation
 
+				# find two closest bricks 
+				closestBricks = getClosestTwoBricks3D(thisBrickLocation, index - 1)
+
+				# find where to place bricks on top of these two closest bricks
+				placementPoint = findBrickPlacement(closestBricks, index)
+
+				# place brick
+				addBrickToCourse(placementPoint, index)
+
+				# move provisional point to new location
+				thisBrickLocation = placementPoint + BrickWidth
+
+				# and if we can't place any more, get out of this
+				if(isCourseFull(index, isCurveClosed, curvelen)):
+					continue
+					"""
 				#get their midpoint
 				theirmidpoint = Brick.midpoint(closestBricks[0], closestBricks[1], isCurveClosed, curvelen)
 
@@ -210,9 +225,7 @@ def layBrickCourse(index):
 #					print "success!"
 					#print "placed brick #", i, "at ", thismidpoint
 					thisBrickLocation = thismidpoint + BrickWidth
-
-			if(isCourseFull(index, isCurveClosed, curvelen)):
-				continue
+					"""
 
 
 def main():
