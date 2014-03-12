@@ -9,6 +9,67 @@ DECIMALPRECISION = 3
 BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
 
+class Brick3D:
+	#each 3d brick is defined as a point, direction, and course curve
+	def __init__(self, point, direction, curve):
+		#self.brickWidth = brickWidth
+		self.brickCenter = point
+		self.brickDirection = direction
+		self.courseCurve = curve
+		self.isCurveClosed = rs.IsCurveClosed(curve)
+		self.curveParameter = rs.CurveClosestPoint(curve, point)
+		self.curveLen = rs.CurveLength(curve)
+
+	def setLocationByParameter(self, parameter):
+		self.brickCenter = rs.EvaluateCurve(self.curve, parameter)
+		self.curveParameter = parameter
+
+	def setLocationByPoint(self, point):
+		self.brickCenter = point
+		self.curveParameter = rs.CurveClosestPoint(curve, point)
+
+	def getLocationByParameter(self):
+		return self.curveParameter
+		
+	def getLocationByPoint(self):
+		return self.brickCenter
+
+	def getCourseLen(self):
+		return self.curveLen
+
+	def getDistance3D(self, b2):
+		return rs.Distance(self.getLocationByPoint(), b2.getLocationByPoint())
+
+	def getDistanceOnCurve(self, b2):
+		[pb1, pb2] = sorted([self.getCurveParameter(),b2.getCurveParameter()])
+		if(self.isCurveClosed):
+			return (pb2 - pb1) % self.curveLen
+		else:
+			return abs(pb1 - pb2)
+
+	def getMidpoint3D(self, b2):
+		return rs.PointDivide(rs.PointAdd(self.getLocationByPoint(), b2.getLocationByPoint()), 2)
+		
+	def getMidpointOnCurve(self, b2):
+		#make sure that they're in order
+		[pb1, pb2] = sorted([self.getCurveParameter(),b2.getCurveParameter()])
+		if(self.isCurveClosed):
+			if((pb2 - pb1) <= (curveLen / 2)):
+				#if the two bricks are close enough on a closed curve as to not wrap around
+				return Brick3D.roundDecimal((pb1 + pb2) / 2)
+			else:
+				#no, they wrap around, accomodate for that
+				return Brick3D.roundDecimal((pb2 + ((curveLen - pb2 + pb1) / 2)) % curveLen)
+		else:
+			#vanilla
+			return Brick3D.roundDecimal((pb1 + pb2) / 2)
+
+	@classmethod
+	def roundDecimal(self, num):
+		global DECIMALPRECISION
+		return round(num, DECIMALPRECISION)
+
+
 class Brick:
 	def __init__(self, courseLength, brickCenter, brickRotation):
 		#self.brickWidth = brickWidth
@@ -94,7 +155,7 @@ def placeNormalCourse(index, brickn):
 		# move the new location to the brick width, plus the gap
 		thisBrickLocation += BrickWidth + averageGap
 
-def layCourse(index):
+def layBrickCourse(index):
 	global BrickList
 	
 	#okay, so place bricks.
@@ -154,34 +215,20 @@ def layCourse(index):
 				continue
 
 
+def main():
+	for i in xrange(len(ContourCurves)):
+		layBrickCourse(i)
 
-"""
-what do we want to do?
-we want to stack these fucking bricks, that's what we want to do.
+	for i in xrange(len(ContourCurves)):
+		for j in xrange(len(BrickList[i])):
+			#DebugList.append(BrickList[i][j].getLocationByPoint)
+			DebugList.append(rs.EvaluateCurve(ContourCurves[i], BrickList[i][j].brickCenter))
 
->>> PROCESS <<<
-look at a line (a course) carefully place bricks on it, being careful that the bricks fall on the bricks below. 
-rinse, repeat.
+	#output what we've got
+	BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
+	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
+		
 
-bricks are represent
-"""
-
-
-
-for i in xrange(len(ContourCurves)):
-	layCourse(i)
-	##print rs.CurveLength(thisCurve)
-for i in xrange(len(ContourCurves)):
-	for j in xrange(len(BrickList[i])):
-		DebugList.append(rs.EvaluateCurve(ContourCurves[i], BrickList[i][j].brickCenter))
-
-#output what we've got
-BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
-BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
-	
-   
-
-
-
-
+if __name__ == "__main__":
+	main()
 
