@@ -256,7 +256,22 @@ def layBrickCourse(index):
 				if(isCourseFull(index)):
 					continue
 
+"""
+###############################
+###############################
+###############################
+###############################
+INPUTS:
+ContourCurves
+BrickWidth
+GapDomain
+MinTributary
 
+OUTPUTS:
+BrickPattern
+BrickPoints
+BrickRotation
+"""
 
 
 def main():
