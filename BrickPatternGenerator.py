@@ -4,6 +4,7 @@ from Grasshopper.Kernel.Data import GH_Path
 from Grasshopper import DataTree
 import gc
 import math
+import copy
 
 DECIMALPRECISION = 3
 BrickList = [[] for i in xrange(len(ContourCurves))]
@@ -186,12 +187,8 @@ def addBrickToCourse(brickToPlace, index):
 	global BrickList
 
 	# check if we can place brick
-	if(canPlaceBrick(brickToPlace, index)):
 		# place brick
-		BrickList[index].append(brickToPlace)
-		return True
-	else:
-		return False
+#		BrickList[index].append(copy.deepcopy(brickToPlace))
 
 def placeNormalCourse(index, brickn):	
 	global BrickList
@@ -211,16 +208,18 @@ def placeNormalCourse(index, brickn):
 def layBrickCourse(index):
 	global BrickList
 	
-	print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>INDEX", index
+	print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>PLACING BRICK COURSE", index
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
 		#what the what, we're the lowest line
 		#how many bricks can we make?
 		placeNormalCourse(index, brickn)	
-				
+		print ">>>> PLACED NORMAL COURSE"		
 	else:
 		provisionalBrick = Brick3D([0,0,0], 0, ContourCurves[index])
+		provisionalBrick.setLocationByParameter(0)
+
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
 
 			#if we have two or more bricks on our floor below us
@@ -237,14 +236,18 @@ def layBrickCourse(index):
 				# set a provisional brick 
 				# ====> provisionalBrick
 
+				print ">>>> PROVISIONAL BRICK #", i, "AT", provisionalBrick.getLocationAsParameter()
+
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
-
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickPlacement(closestBricks, index)
 
-				# place brick
-				addBrickToCourse(brickToPlace, index)
+				print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter()
+
+				if(canPlaceBrick(brickToPlace, index)):
+					# place brick
+					addBrickToCourse(brickToPlace, index)
 
 				# move provisional point to new location
 				provisionalBrick.setLocationByParameter(provisionalBrick.getLocationAsParameter() + BrickWidth)
@@ -252,28 +255,8 @@ def layBrickCourse(index):
 				# and if we can't place any more, get out of this
 				if(isCourseFull(index)):
 					continue
-					"""
-				#get their midpoint
-				theirmidpoint = Brick.midpoint(closestBricks[0], closestBricks[1], isCurveClosed, curvelen)
 
-				#now we have to translate their midpoint to our midpoint, since the curve on this level may be different in length to the one below
-				their3dmidpoint = rs.EvaluateCurve(ContourCurves[index - 1], theirmidpoint)
-#				print their3dmidpoint
-				thismidpoint = rs.CurveClosestPoint(ContourCurves[index], their3dmidpoint)
-				#print "what about", thismidpoint,"?"
-#				print "INDEX ", index, "<<<<<<<<<<< Trying to place B#",i, "----",  thisBrickLocation, "  it's better to place at ", thismidpoint, ", because of two bricks underneath:", closestBricks[0], "and", closestBricks[1]
 
-				#if it overlaps with something we already have, go on
-				if(isBrickOverlapping(thismidpoint, index, isCurveClosed, curvelen)):
-#					print "nope, can't"
-					thisBrickLocation += BrickWidth
-					# aw shucks we're trying to place on the same point twice - break this for loop
-				else:	
-					BrickList[index].append(Brick(curvelen,thismidpoint,0))
-#					print "success!"
-					#print "placed brick #", i, "at ", thismidpoint
-					thisBrickLocation = thismidpoint + BrickWidth
-					"""
 
 
 def main():
@@ -286,7 +269,6 @@ def main():
 			#DebugList.append(rs.EvaluateCurve(ContourCurves[i], BrickList[i][j].brickCenter))
 
 	#output what we've got
-	print [map(lambda x: x.brickCenter, alist) for alist in BrickList]
 	BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
 	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
 	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
