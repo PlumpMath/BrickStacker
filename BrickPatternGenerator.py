@@ -91,7 +91,7 @@ class Brick3D:
 		return rs.PointDivide(rs.PointAdd(self.getLocationAsPoint(), b2.getLocationAsPoint()), 2)
 		
 
-	def getBearingMidpoint3D(self, b2):
+	def getFacingEndpoints3D(self, b2):
 
 		# get midpoitn in 3d
 		midPoint3D = self.getMidpoint3D(b2)
@@ -107,7 +107,6 @@ class Brick3D:
 		# get all distances between midpoint and all endpoints
 		pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
 		pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
-		pointDistances = map(lambda x: rs.Distance(midPoint3D, x), endPoints3D)
 
 		print "Pb1", pointDistancesB1
 		print "Pb2", pointDistancesB2
@@ -115,19 +114,20 @@ class Brick3D:
 
 		closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
 		closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
-		closestTwoEndpointsB1 = [endPoints3D[index] for index in closestTwoEndpointsIndicesB1]
-		closestTwoEndpointsB2 = [endPoints3D[index] for index in closestTwoEndpointsIndicesB2]
+		closestEndpointB1 = endPoints3D[closestEndpointIndexB1]
+		closestEndpointB2 = endPoints3D[closestEndpointIndexB2]
 
-		closestTwoEndpointsIndices = sorted(range(len(endPoints3D)), key=lambda k: pointDistances[k])[0:2]
-		closestTwoEndpoints = [endPoints3D[index] for index in closestTwoEndpointsIndices]
-
+		return [closestEndpointB1, closestEndpointB2]
+		# project those endpoints onto curve
+		
 		# get placementpoint: midpoint of endpoints
-		placementPoint = rs.PointDivide(rs.PointAdd(closestTwoEndpoints[0], closestTwoEndpoints[1]), 2)
+		placementPoint = rs.PointDivide(rs.PointAdd(closestEndpointB1, closestEndpointB2), 2)
 
 		# get placement vector:
-		#placementVector = 
+		placementVector = rs.VectorCreate(closestEndpointB1, closestEndpointB2)
 		
 		print placementPoint
+		print placementVector
 	
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
@@ -267,7 +267,7 @@ def findBrickBearingPlacement(closestBricks, index):
 	#get midpoint of bricks
 	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
 
-	print closestBricks[0].getBearingMidpoint3D(closestBricks[1])
+	print closestBricks[0].getFacingEndpoints3D(closestBricks[1])
 
 	#get closest point on line to this midpoint
 	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
