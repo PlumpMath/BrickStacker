@@ -142,7 +142,7 @@ def decideBrickNum(index):
 	brickn = howManyBricksCanWeMake(index)
 	return int(sum(brickn)/len(brickn))
 
-def isBrickOverlapping(thisBrickLocation, index, isClosedCurve=False, curvelen=0):
+def isBrickSpacingping(thisBrickLocation, index, isClosedCurve=False, curvelen=0):
 	#check to see if the brick overlaps with anything
 	thisdistances = map(lambda x: Brick.distance(thisBrickLocation, x.brickCenter, isClosedCurve, curvelen), BrickList[index])
 	#print "t>>>>>>>>>", thisdistances
@@ -215,7 +215,7 @@ def brickDoesNotOverlap(brickToPlace, index):
 
 	# are there any bricks that are within BrickWidth distance of brickToPlace?
 	for aBrick in (BrickList[index]):
-		if(brickToPlace.getDistance3D(aBrick) < BrickWidth):
+		if(brickToPlace.getDistance3D(aBrick) < (BrickWidth + BrickSpacingMin)):
 			return False
 
 	return True
@@ -242,7 +242,7 @@ def placeNormalCourse(index, brickn):
 	global BrickList
 	curvelen = rs.CurveLength(ContourCurves[index])
 	#averageGap = (curvelen - (brickn * BrickWidth)) / brickn
-	averageGap = (BrickOverlapMax + BrickOverlapMin) / 2
+	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 	
 	thisBrickLocation = 0
 	for i in xrange(brickn):
@@ -312,14 +312,14 @@ def layBrickCourse(index):
 
 
 def processInput():
-	global BrickOverlapMin, BrickOverlapMax, BrickTributaryMin 
+	global BrickSpacingMin, BrickSpacingMax, BrickTributaryMin 
 
 	# define courses
 	for i in xrange(len(ContourCurves)):
 		CourseList.append(Course(ContourCurves[i]))		
 
-	BrickOverlapMin = GapDomain[0]
-	BrickOverlapMax = GapDomain[1]
+	BrickSpacingMin = GapDomain[0]
+	BrickSpacingMax = GapDomain[1]
 	BrickTributaryMin = MinTributary
 
 
