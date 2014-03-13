@@ -155,15 +155,26 @@ def isBrickOverlapping(thisBrickLocation, index, isClosedCurve=False, curvelen=0
 def isCourseFull(index):
 	global BrickList
 
-	betweendistances = [] 
-	isCurveClosed = rs.IsCurveClosed(ContourCurves[index])
-	curveLen = rs.CurveLength(ContourCurves[index])
+	return False
+
+	if(len(BrickList[index]) == 0):
+		return False
+
+	BrickParams = sorted(map(lambda x: x.getLocationAsParameter(), BrickList[index]) + [0, CourseList[index].length()])
+
+	print BrickParams
 
 	sortedBrickList =  sorted(BrickList[index], key=lambda k: k.getLocationAsParameter())
+
+	print sortedBrickList
+
 	for i in xrange(1, len(sortedBrickList)):
-		if(sortedBrickList[i - 1].getDistanceOnCurve(sortedBrickList[i]) < BrickWidth):
-			return True
-	return False
+		# you know something has space if there is at least one location in which the distance between bricks > BrickWidth * 2
+		if(sortedBrickList[i - 1].getDistanceOnCurve(sortedBrickList[i]) > BrickWidth * 2):
+			return False
+	
+	print "FULLLLLLLLLLLLLLLLL"
+	return True
 
 
 # get distances from this brick to lower bricks - in 3D space.
@@ -194,19 +205,32 @@ def findBrickPlacement(closestBricks, index):
 	rotation = 0
 
 	newBrick = Brick3D(closestPoint, rotation, CourseList[index])
+
 	return newBrick
 
 
-# check if we can place brick.
-def canPlaceBrick(brickToPlace, index):
+# check if brick overlaps or not
+def brickDoesNotOverlap(brickToPlace, index):
 	global BrickList
 
 	# are there any bricks that are within BrickWidth distance of brickToPlace?
-
 	for aBrick in (BrickList[index]):
-		if(brickToPlace.getDistanceOnCurve(aBrick) < BrickWidth):
+		if(brickToPlace.getDistance3D(aBrick) < BrickWidth):
 			return False
 
+	return True
+
+
+# check if we can place brick.
+def brickIsSupported(brickToPlace, closestBricks, index):
+	global BrickList
+
+	#check from this brick to each brick - is the overlap desirable?
+	#overlap = BrickWidth - brick midpoint distance
+	for eachClosestBrick in closestBricks:
+		overlap = (BrickWidth - brickToPlace.getDistance3D(eachClosestBrick))
+		if(overlap < BrickTributaryMin):
+			return False
 	return True
 
 # place brick
@@ -217,7 +241,8 @@ def addBrickToCourse(brickToPlace, index):
 def placeNormalCourse(index, brickn):	
 	global BrickList
 	curvelen = rs.CurveLength(ContourCurves[index])
-	averageGap = (curvelen - (brickn * BrickWidth)) / brickn
+	#averageGap = (curvelen - (brickn * BrickWidth)) / brickn
+	averageGap = (BrickOverlapMax + BrickOverlapMin) / 2
 	
 	thisBrickLocation = 0
 	for i in xrange(brickn):
@@ -260,37 +285,42 @@ def layBrickCourse(index):
 				# move provisional brick to new location
 				#okay, try to place the brick right here.
 
-				# set a provisional brick 
-				# ====> provisionalBrick
+				# if we can't place any more, get out of this
+				if(isCourseFull(index)):
+					continue
 
-				print ">>>> PROVISIONAL BRICK #", i, "AT", provisionalBrick.getLocationAsParameter()
+				#print ">>>> PROVISIONAL BRICK #", i, "AT", provisionalBrick.getLocationAsParameter()
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
+
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickPlacement(closestBricks, index)
 
-				print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter() , "/", CourseList[index].length()
+				#print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter() , "/", CourseList[index].length()
 
-				if(canPlaceBrick(brickToPlace, index)):
+				if(brickIsSupported(brickToPlace, closestBricks, index) and brickDoesNotOverlap(brickToPlace, index)):
 					# place brick
-					print ">>>> PLACED BRICK"
 					addBrickToCourse(brickToPlace, index)
 
 				# move provisional point to new location
 				provisionalBrick.setLocationByParameter(provisionalBrick.getLocationAsParameter() + BrickWidth)
 
-				# and if we can't place any more, get out of this
-				if(isCourseFull(index)):
-					continue
 
-		print BrickList[index]
+		#print BrickList[index]
 		print "okay, next course"
 
 
-def processCourses():
+def processInput():
+	global BrickOverlapMin, BrickOverlapMax, BrickTributaryMin 
+
+	# define courses
 	for i in xrange(len(ContourCurves)):
 		CourseList.append(Course(ContourCurves[i]))		
+
+	BrickOverlapMin = GapDomain[0]
+	BrickOverlapMax = GapDomain[1]
+	BrickTributaryMin = MinTributary
 
 
 
@@ -307,8 +337,11 @@ def layCourses():
 
 def outputCourses():
 	global BrickList
+	global BrickPoints
+	global BrickPattern
+	global BrickRotation
 	#output what we've got
-	BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
+	BrickPattern = ListofListsToTree([map(lambda x: x.getLocationAsParameter(), alist) for alist in BrickList])
 	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
 	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
 		
@@ -333,10 +366,9 @@ BrickRotation
 
 def main():
 
-	processCourses()
+	processInput()
 	layCourses()
 	outputCourses()
-
 
 	print BrickPoints
 if __name__ == "__main__":
