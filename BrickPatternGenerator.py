@@ -7,30 +7,48 @@ import math
 import copy
 
 DECIMALPRECISION = 3
+CourseList= []
 BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
+
+
+#IMPLEMENT SO THAT EACH BRICK DOES NOT HAVE THE ENTIER CURVE INSIDE OF IT
+class Course:
+	#each course is defined as a course curve and a list of bricks
+	def __init__(self, curve):
+		self.courseCurve = curve
+		self.courseBricks = []
+		self.courseLen = rs.CurveLength(curve)
+		self.isClosedCurve = rs.IsCurveClosed(curve)
+
+	def getCurve(self):
+		return self.courseCurve
+
+	def length(self):
+		return self.courseLen
+
+	def isClosed(self):
+		return self.isClosedCurve
 
 class Brick3D:
 	#each 3d brick is defined as a point, direction, and course curve
 	#constructor
-	def __init__(self, point, rotation, curve):
+	def __init__(self, point, rotation, Course):
 		#self.brickWidth = brickWidth
 		self.brickCenter = point
 		self.brickRotation = rotation
-		self.courseCurve = curve
-		self.isCurveClosed = rs.IsCurveClosed(curve)
-		self.curveParameter = rs.CurveClosestPoint(curve, point)
-		self.curveLen = rs.CurveLength(curve)
+		self.Course = Course
+#		self.courseCurve = curve
+		self.curveParameter = rs.CurveClosestPoint(Course.getCurve(), point)
 
 	def setRotation(self, rotation):
 		self.brickRotation = rotation
 
-	def setCurve(self, curve):
-		self.courseCurve = curve
-		self.isCurveClosed = rs.IsCurveClosed(curve)
+	def setCourse(self, Course):
+		self.Course = Course
 
 	def setLocationByParameter(self, parameter):
-		self.brickCenter = rs.EvaluateCurve(self.courseCurve, parameter)
+		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
 		self.curveParameter = parameter
 
 	def setLocationByPoint(self, point):
@@ -44,15 +62,15 @@ class Brick3D:
 		return self.brickCenter
 
 	def getCourseLen(self):
-		return self.curveLen
+		return self.Course.length()
 
 	def getDistance3D(self, b2):
 		return rs.Distance(self.getLocationAsPoint(), b2.getLocationAsPoint())
 
 	def getDistanceOnCurve(self, b2):
 		[pb1, pb2] = sorted([self.getLocationAsParameter(),b2.getLocationAsParameter()])
-		if(self.isCurveClosed):
-			return (pb2 - pb1) % self.curveLen
+		if(self.Course.isClosed()):
+			return (pb2 - pb1) % self.Course.length()
 		else:
 			return abs(pb1 - pb2)
 
@@ -175,20 +193,20 @@ def findBrickPlacement(closestBricks, index):
 	#rotate brick
 	rotation = 0
 
-	newBrick = Brick3D(closestPoint, rotation, ContourCurves[index])
+	newBrick = Brick3D(closestPoint, rotation, CourseList[index])
 	return newBrick
 
 
+# check if we can place brick.
 def canPlaceBrick(brickToPlace, index):
+	global BrickList
 	# TO IMPLEMENT
 	return True
 
+# place brick
 def addBrickToCourse(brickToPlace, index):
 	global BrickList
-
-	# check if we can place brick
-		# place brick
-#		BrickList[index].append(copy.deepcopy(brickToPlace))
+	BrickList[index].append(copy.deepcopy(brickToPlace))
 
 def placeNormalCourse(index, brickn):	
 	global BrickList
@@ -198,12 +216,13 @@ def placeNormalCourse(index, brickn):
 	thisBrickLocation = 0
 	for i in xrange(brickn):
 		# add a brick
-		newBrick = Brick3D([0,0,0], 0, ContourCurves[index])
+		newBrick = Brick3D([0,0,0], 0, CourseList[index])
 		newBrick.setLocationByParameter(thisBrickLocation)
 		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
 		thisBrickLocation += BrickWidth + averageGap
+
 
 def layBrickCourse(index):
 	global BrickList
@@ -217,7 +236,7 @@ def layBrickCourse(index):
 		placeNormalCourse(index, brickn)	
 		print ">>>> PLACED NORMAL COURSE"		
 	else:
-		provisionalBrick = Brick3D([0,0,0], 0, ContourCurves[index])
+		provisionalBrick = Brick3D([0,0,0], 0, CourseList[index])
 		provisionalBrick.setLocationByParameter(0)
 
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
@@ -247,6 +266,7 @@ def layBrickCourse(index):
 
 				if(canPlaceBrick(brickToPlace, index)):
 					# place brick
+					print "* PLACED BRICK"
 					addBrickToCourse(brickToPlace, index)
 
 				# move provisional point to new location
@@ -255,6 +275,35 @@ def layBrickCourse(index):
 				# and if we can't place any more, get out of this
 				if(isCourseFull(index)):
 					continue
+
+		print BrickList[index]
+		print "okay, next course"
+
+
+def processCourses():
+	for i in xrange(len(ContourCurves)):
+		CourseList.append(Course(ContourCurves[i]))		
+
+
+
+def layCourses():
+	for i in xrange(len(CourseList)):
+		layBrickCourse(i)
+
+	for i in xrange(len(CourseList)):
+		for j in xrange(len(BrickList[i])):
+			DebugList.append(BrickList[i][j].getLocationAsPoint())
+			#DebugList.append(rs.EvaluateCurve(ContourCurves[i], BrickList[i][j].brickCenter))
+
+
+
+def outputCourses():
+	global BrickList
+	#output what we've got
+	BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
+	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
+	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
+		
 
 """
 ###############################
@@ -275,19 +324,11 @@ BrickRotation
 
 
 def main():
-	for i in xrange(len(ContourCurves)):
-		layBrickCourse(i)
 
-	for i in xrange(len(ContourCurves)):
-		for j in xrange(len(BrickList[i])):
-			DebugList.append(BrickList[i][j].getLocationAsPoint())
-			#DebugList.append(rs.EvaluateCurve(ContourCurves[i], BrickList[i][j].brickCenter))
+	processCourses()
+	layCourses()
+	outputCourses()
 
-	#output what we've got
-	BrickPattern = ListofListsToTree([map(lambda x: x.brickCenter, alist) for alist in BrickList])
-	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
-	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
-		
 
 	print BrickPoints
 if __name__ == "__main__":
