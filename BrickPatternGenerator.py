@@ -1,4 +1,4 @@
-
+import sys
 import rhinoscriptsyntax as rs
 from Grasshopper.Kernel.Data import GH_Path
 from Grasshopper import DataTree
@@ -200,7 +200,13 @@ def findBrickPlacement(closestBricks, index):
 # check if we can place brick.
 def canPlaceBrick(brickToPlace, index):
 	global BrickList
-	# TO IMPLEMENT
+
+	# are there any bricks that are within BrickWidth distance of brickToPlace?
+
+	for aBrick in (BrickList[index]):
+		if(brickToPlace.getDistanceOnCurve(aBrick) < BrickWidth):
+			return False
+
 	return True
 
 # place brick
@@ -226,8 +232,10 @@ def placeNormalCourse(index, brickn):
 
 def layBrickCourse(index):
 	global BrickList
+	global CourseList
 	
 	print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>PLACING BRICK COURSE", index
+	print ">>>>>>>>> COURSE LEN = ", CourseList[index].length()
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
@@ -262,11 +270,11 @@ def layBrickCourse(index):
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickPlacement(closestBricks, index)
 
-				print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter()
+				print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter() , "/", CourseList[index].length()
 
 				if(canPlaceBrick(brickToPlace, index)):
 					# place brick
-					print "* PLACED BRICK"
+					print ">>>> PLACED BRICK"
 					addBrickToCourse(brickToPlace, index)
 
 				# move provisional point to new location
