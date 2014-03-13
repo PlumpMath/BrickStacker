@@ -95,7 +95,7 @@ class Brick3D:
 		return rs.PointDivide(rs.PointAdd(self.getLocationAsPoint(), b2.getLocationAsPoint()), 2)
 		
 
-	def getTributaryMidpoint3D(self, b2):
+	def getBearingMidpoint3D(self, b2):
 		# get midpoitn in 3d
 		midPoint3D = self.getMidpoint3D(b2)
 
@@ -243,14 +243,14 @@ def closestEndPoints(midPoint, closestBricks, index):
 
 
 
-# find where to place bricks on top of these two closest bricks
-def findBrickPlacements(closestBricks, index):
+# find where to place bricks on top of these two closest bricks, taking bearing (rotation) into account
+def findBrickBearingPlacement(closestBricks, index):
 	global BrickList
 
 	#get midpoint of bricks
 	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
 
-	print closestBricks[0].getTributaryMidpoint3D(closestBricks[1])
+	print closestBricks[0].getBearingMidpoint3D(closestBricks[1])
 
 	#get closest point on line to this midpoint
 	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
@@ -307,7 +307,7 @@ def brickIsSupported(brickToPlace, closestBricks, index):
 	#overlap = BrickWidth - brick midpoint distance
 	for eachClosestBrick in closestBricks:
 		overlap = (BrickWidth - brickToPlace.getDistance3D(eachClosestBrick))
-		if(overlap < BrickTributaryMin):
+		if(overlap < BrickBearingMin):
 			return False
 	return True
 
@@ -330,7 +330,7 @@ def layNormalCourse(index, rhythm=0):
 		provisionalLocation = index % rhythm	
 	for i in xrange(brickn):
 		# add a brick
-		newBrick = Brick3D([0,0,0], 0, CourseList[index])
+		newBrick = Brick3D([0,0,0], 0.3, CourseList[index])
 		newBrick.setLocationByParameter(provisionalLocation)
 		BrickList[index].append(newBrick)
 		
@@ -378,7 +378,7 @@ def layStackingCourse(index):
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
 
 				# find where to place bricks on top of these two closest bricks
-				brickToPlace = findBrickPlacement(closestBricks, index)
+				brickToPlace = findBrickBearingPlacement(closestBricks, index)
 
 				# actually, for each pair of bricks, try to spread out
 #				bricksToPlace = findBrickPlacements(closestBricks, index)
@@ -398,7 +398,7 @@ def layStackingCourse(index):
 
 
 def processInput():
-	global BrickSpacingMin, BrickSpacingMax, BrickTributaryMin 
+	global BrickSpacingMin, BrickSpacingMax, BrickBearingMin 
 
 	# define courses
 	for i in xrange(len(ContourCurves)):
@@ -406,7 +406,7 @@ def processInput():
 
 	BrickSpacingMin = GapDomain[0]
 	BrickSpacingMax = GapDomain[1]
-	BrickTributaryMin = MinTributary
+	BrickBearingMin = MinBearing
 
 
 
@@ -443,7 +443,7 @@ INPUTS:
 ContourCurves
 BrickWidth
 GapDomain
-MinTributary
+MinBearing
 
 OUTPUTS:
 BrickPattern
