@@ -241,22 +241,23 @@ def addBrickToCourse(brickToPlace, index):
 def layNormalCourse(index, rhythm=0):
 	global BrickList
 	brickn = decideBrickNum(index)
+	print brickn
 	curvelen = rs.CurveLength(ContourCurves[index])
 	#averageGap = (curvelen - (brickn * BrickWidth)) / brickn
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
-	
+
 	if(rhythm == 0):
-		thisBrickLocation = 0
+		provisionalLocation = 0
 	else:
-		thisBrickLocation = index % rhythm	
+		provisionalLocation = index % rhythm	
 	for i in xrange(brickn):
 		# add a brick
 		newBrick = Brick3D([0,0,0], 0, CourseList[index])
-		newBrick.setLocationByParameter(thisBrickLocation)
+		newBrick.setLocationByParameter(provisionalLocation)
 		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
-		thisBrickLocation += BrickWidth + averageGap
+		provisionalLocation += BrickWidth + averageGap
 
 
 def layStackingCourse(index):
@@ -330,9 +331,9 @@ def processInput():
 
 def layCourses():
 	for i in xrange(len(CourseList)):
-		layNormalCourse(i, 2)
-#	for i in xrange(len(CourseList)):
+		layNormalCourse(i, 0)
 #		layStackingCourse(i)
+#	for i in xrange(len(CourseList)):
 """
 	for i in xrange(len(CourseList)):
 		for j in xrange(len(BrickList[i])):
