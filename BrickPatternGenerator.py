@@ -60,14 +60,10 @@ class Brick3D:
 		self.curveParameter = rs.CurveClosestPoint(self.courseCurve, point)
 
 	def getEndpoints3D(self):
-		print self.getVector()
-		print rs.PointAdd(self.brickCenter, self.getVector()) 
+		return[rs.PointAdd(self.brickCenter, self.getVector()), rs.PointAdd(self.brickCenter, rs.VectorReverse(self.getVector()))] 
 
 	def getVector(self):
-		print self.Course.getCurve()
-		print self.curveParameter, "----"
-		print rs.CurvePerpFrame(self.Course.getCurve(), self.curveParameter)		
-		print rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
+		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
 
 	def getRotation(self):
 		return self.brickRotation
@@ -96,22 +92,43 @@ class Brick3D:
 		
 
 	def getBearingMidpoint3D(self, b2):
+
 		# get midpoitn in 3d
 		midPoint3D = self.getMidpoint3D(b2)
 
 		# get all endpoints in 3D
 		endPoints3D = self.getEndpoints3D() + b2.getEndpoints3D()
-		# get the two closest endpoints to this midpoint
 
-		midPoints = sorted([self.getLocationAsParameter(), b2.getLocationAsParameter()])
-		print midPoints
-#		midPointParam = CourseList[index].getClosestParameterFromPoint(midPoint)
-		closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in midPoints]
-		print "closest endpoints params=",closestEndpointParams	
-		print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
-		print midPointParam	
+		B1EndPoints3D = self.getEndpoints3D()
+		B2EndPoints3D = b2.getEndpoints3D()
+	
+		print "Endpoints = ",endPoints3D
 
+		# get all distances between midpoint and all endpoints
+		pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
+		pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
+		pointDistances = map(lambda x: rs.Distance(midPoint3D, x), endPoints3D)
 
+		print "Pb1", pointDistancesB1
+		print "Pb2", pointDistancesB2
+		# get closest two endpoints
+
+		closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
+		closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
+		closestTwoEndpointsB1 = [endPoints3D[index] for index in closestTwoEndpointsIndicesB1]
+		closestTwoEndpointsB2 = [endPoints3D[index] for index in closestTwoEndpointsIndicesB2]
+
+		closestTwoEndpointsIndices = sorted(range(len(endPoints3D)), key=lambda k: pointDistances[k])[0:2]
+		closestTwoEndpoints = [endPoints3D[index] for index in closestTwoEndpointsIndices]
+
+		# get placementpoint: midpoint of endpoints
+		placementPoint = rs.PointDivide(rs.PointAdd(closestTwoEndpoints[0], closestTwoEndpoints[1]), 2)
+
+		# get placement vector:
+		#placementVector = 
+		
+		print placementPoint
+	
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
 		[pb1, pb2] = sorted([self.getCurveParameter(),b2.getCurveParameter()])
