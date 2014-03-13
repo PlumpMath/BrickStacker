@@ -30,6 +30,10 @@ class Course:
 	def isClosed(self):
 		return self.isClosedCurve
 
+	def getClosestParameterFromPoint(self, point):
+		return rs.CurveClosestPoint(self.courseCurve, point)
+
+
 class Brick3D:
 	#each 3d brick is defined as a point, direction, and course curve
 	#constructor
@@ -55,6 +59,19 @@ class Brick3D:
 		self.brickCenter = point
 		self.curveParameter = rs.CurveClosestPoint(self.courseCurve, point)
 
+	def getEndpoints3D(self):
+		print self.getVector()
+		print rs.PointAdd(self.brickCenter, self.getVector()) 
+
+	def getVector(self):
+		print self.Course.getCurve()
+		print self.curveParameter, "----"
+		print rs.CurvePerpFrame(self.Course.getCurve(), self.curveParameter)		
+		print rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
+
+	def getRotation(self):
+		return self.brickRotation
+
 	def getLocationAsParameter(self):
 		return self.curveParameter
 		
@@ -77,6 +94,24 @@ class Brick3D:
 	def getMidpoint3D(self, b2):
 		return rs.PointDivide(rs.PointAdd(self.getLocationAsPoint(), b2.getLocationAsPoint()), 2)
 		
+
+	def getTributaryMidpoint3D(self, b2):
+		# get midpoitn in 3d
+		midPoint3D = self.getMidpoint3D(b2)
+
+		# get all endpoints in 3D
+		endPoints3D = self.getEndpoints3D() + b2.getEndpoints3D()
+		# get the two closest endpoints to this midpoint
+
+		midPoints = sorted([self.getLocationAsParameter(), b2.getLocationAsParameter()])
+		print midPoints
+#		midPointParam = CourseList[index].getClosestParameterFromPoint(midPoint)
+		closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in midPoints]
+		print "closest endpoints params=",closestEndpointParams	
+		print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
+		print midPointParam	
+
+
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
 		[pb1, pb2] = sorted([self.getCurveParameter(),b2.getCurveParameter()])
@@ -90,6 +125,8 @@ class Brick3D:
 		else:
 			#vanilla
 			return Brick3D.roundDecimal((pb1 + pb2) / 2)
+
+#
 
 	@classmethod
 	def roundDecimal(self, num):
@@ -177,6 +214,7 @@ def isCourseFull(index):
 	return True
 
 
+
 # get distances from this brick to lower bricks - in 3D space.
 def getClosestTwoBricks3D(thisbrick, index):
 	global BrickList
@@ -190,7 +228,45 @@ def getClosestTwoBricks3D(thisbrick, index):
 	return [BrickList[index][i] for i in closestIndex]
 
 
+
+
+#get endpoints of bricks closest to midPoint
+def closestEndPoints(midPoint, closestBricks, index):
+	global CourseList
+
+	print midPoint
+	midPointParam = CourseList[index].getClosestParameterFromPoint(midPoint)
+	closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in map(lambda x: x.getLocationAsParameter(), closestBricks)]
+	print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
+	print "closest endpoints params=",closestEndpointParams	
+	print midPointParam	
+
+
+
 # find where to place bricks on top of these two closest bricks
+def findBrickPlacements(closestBricks, index):
+	global BrickList
+
+	#get midpoint of bricks
+	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
+
+	print closestBricks[0].getTributaryMidpoint3D(closestBricks[1])
+
+	#get closest point on line to this midpoint
+	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
+	closestMidPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
+
+	#rotate brick
+	rotation = 0
+
+	newBrick = Brick3D(closestMidPoint, rotation, CourseList[index])
+
+	return newBrick
+
+
+
+# find where to place bricks on top of these two closest bricks
+# actually, for each pair of bricks, try to spread out and place three bricks
 def findBrickPlacement(closestBricks, index):
 	global BrickList
 
@@ -201,7 +277,9 @@ def findBrickPlacement(closestBricks, index):
 	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
 	closestPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
 
-	#rotate brick
+	closestBrickDistCurve = closestBricks[0].getDistanceOnCurve(closestBricks[1])
+
+	#rotate brick none, for now
 	rotation = 0
 
 	newBrick = Brick3D(closestPoint, rotation, CourseList[index])
@@ -269,14 +347,14 @@ def layStackingCourse(index):
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
-		#what the what, we're the lowest line
-		#how many bricks can we make?
+		#we're the lowest line, place a normal Course
 		layNormalCourse(index)	
-		print ">>>> PLACED NORMAL COURSE"		
 	else:
 		provisionalBrick = Brick3D([0,0,0], 0, CourseList[index])
 		provisionalBrick.setLocationByParameter(0)
 
+		print "PREVIOUS COURSE ="
+		print map(lambda x: x.getLocationAsParameter(), BrickList[index-1])
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
 
 			#if we have two or more bricks on our floor below us
@@ -294,13 +372,16 @@ def layStackingCourse(index):
 				if(isCourseFull(index)):
 					continue
 
-				#print ">>>> PROVISIONAL BRICK #", i, "AT", provisionalBrick.getLocationAsParameter()
+				print ">>>> PROVISIONAL BRICK #", i, "AT", provisionalBrick.getLocationAsParameter()
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
 
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickPlacement(closestBricks, index)
+
+				# actually, for each pair of bricks, try to spread out
+#				bricksToPlace = findBrickPlacements(closestBricks, index)
 
 				#print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter() , "/", CourseList[index].length()
 
@@ -331,8 +412,8 @@ def processInput():
 
 def layCourses():
 	for i in xrange(len(CourseList)):
-		layNormalCourse(i, 0)
-#		layStackingCourse(i)
+#		layNormalCourse(i, 2)
+		layStackingCourse(i)
 #	for i in xrange(len(CourseList)):
 """
 	for i in xrange(len(CourseList)):
@@ -350,7 +431,7 @@ def outputCourses():
 	#output what we've got
 	BrickPattern = ListofListsToTree([map(lambda x: x.getLocationAsParameter(), alist) for alist in BrickList])
 	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
-	BrickRotation = ListofListsToTree([map(lambda x: x.brickRotation, alist) for alist in BrickList])
+	BrickRotation = ListofListsToTree([map(lambda x: x.getRotation(), alist) for alist in BrickList])
 		
 
 """
