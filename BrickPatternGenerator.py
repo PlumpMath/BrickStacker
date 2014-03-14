@@ -126,8 +126,8 @@ class Brick3D:
 		return self.curveParameter
 	
 	def getLocationAsLength(self):
-		return ghcomp.LengthParameter(self.getCourse().getCurve(), self.curveParameter)[0]
-#		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
+#		return ghcomp.LengthParameter(self.getCourse().getCurve(), self.curveParameter)[0]
+		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
 
 	def getLocationAsPoint(self):
 		return self.brickCenter
@@ -362,6 +362,7 @@ def findBrickBearingPlacement(closestBricks, index):
 	#rotate brick
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
+	#rotation += (0.03  * (len(CourseList)-index))
 	print "rotation=", rotation
 	DebugList.append([rotation])
 
@@ -427,9 +428,10 @@ def layNormalCourse(index, rhythm=0):
 	global DebugList2
 
 	brickn = decideBrickNum(index)
+#	brickn *= 1.3
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 
-	print ">>> LAYING NORMAL COURSE #", index
+#	print ">>> LAYING NORMAL COURSE #", index
 	#set provisional location
 	if(rhythm == 0):
 		provisionalLocation = 0
@@ -440,7 +442,7 @@ def layNormalCourse(index, rhythm=0):
 	for i in xrange(brickn):
 
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], 0.4, CourseList[index])
+		newBrick = Brick3D([0,0,0], 0.0, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
@@ -451,7 +453,7 @@ def layNormalCourse(index, rhythm=0):
 		# move the new location to the brick width, plus the gap
 		provisionalLocation += BrickWidth + averageGap
 
-	print "bricklist=", map(lambda x: x.getLocationAsLength(), BrickList[index])
+#	print "bricklist=", map(lambda x: x.getLocationAsLength(), BrickList[index])
 
 def layStackingCourse(index):
 	global BrickList
@@ -519,7 +521,7 @@ def layStackingCourse(index):
 					print ">>> 3. Brick NOT PLACED"
 
 				# move provisional point to new location
-				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + BrickWidth)
+				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + (BrickWidth * 3/3))
 
 
 		#print BrickList[index]
@@ -541,8 +543,8 @@ def processInput():
 
 def layCourses():
 	for i in xrange(len(CourseList)):
-#		layNormalCourse(i, 2)
-		layStackingCourse(i)
+		layNormalCourse(i, 0)
+#		layStackingCourse(i)
 
 def outputCourses():
 	global BrickList
