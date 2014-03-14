@@ -11,11 +11,7 @@ DECIMALPRECISION = 3
 CourseList= []
 BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
-DebugTwo = []
-
-def printBOLD(stuff):
-	global DebugTwo
-	DebugTwo = stuff
+DebugList2 = []
 
 def midpoint3D(p1, p2):
 	# get midpoint of endpoints
@@ -544,8 +540,10 @@ def outputCourses():
 	global BrickVectors
 	global BrickRotation
 	global DebugList
+	global DebugList2
 	#output what we've got
 	DebugList = ListofListsToTree(DebugList)
+	DebugList2 = ListofListsToTree(DebugList2)
 	BrickPattern = ListofListsToTree([map(lambda x: x.getLocationAsParameter(), alist) for alist in BrickList])
 	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
 	BrickVectors = ListofListsToTree([map(lambda x: x.getVector(), alist) for alist in BrickList])
