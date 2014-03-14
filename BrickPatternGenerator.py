@@ -434,7 +434,7 @@ def layNormalCourse(index, rhythm=0):
 	for i in xrange(brickn):
 
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], 0.3, CourseList[index])
+		newBrick = Brick3D([0,0,0], 0.4, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
