@@ -34,7 +34,8 @@ class Course:
 		return rs.CurveClosestPoint(self.courseCurve, point)
 
 	def getClosestPointOnCurve(self, point):
-		return rs.EvaluateCurve(self.courseCurve, self.getClosestParameterFromPoint(point))
+		#return rs.EvaluateCurve(self.courseCurve, self.getClosestParameterFromPoint(point))
+		return rs.CurveArcLengthPoint(self.courseCurve, self.getClosestParameterFromPoint(point))
 
 	def getTangentVectorFromParameter(self, parameter):
 		return rs.CurveCurvature(self.getCurve(), parameter)[1]		
@@ -67,8 +68,9 @@ class Brick3D:
 		self.Course = Course
 
 	def setLocationByParameter(self, parameter):
-		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
 		self.curveParameter = parameter
+		#self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
+		self.brickCenter = rs.CurveArcLengthPoint(self.Course.getCurve(), parameter)
 
 	def setLocationByPoint(self, point):
 		self.brickCenter = point
@@ -88,6 +90,9 @@ class Brick3D:
 		
 	def getLocationAsPoint(self):
 		return self.brickCenter
+
+	def getCourse(self):
+		return self.Course
 
 	def getCourseLen(self):
 		return self.Course.length()
@@ -277,20 +282,20 @@ def findBrickBearingPlacement(closestBricks, index):
 	# get the two endpoints closest to each other
 	facingEndpoints = closestBricks[0].getFacingEndpoints3D(closestBricks[1])
 
-	# project endpoints onto our line
-	projectedEndpoints = [CourseList[index].getClosestPointOnCurve(apoint) for apoint in facingEndpoints]
+	# get midpoint of endpoints
+	endpointmid = rs.PointDivide(rs.PointAdd(facingEndpoints[0], facingEndpoints[1]), 2)
+	# and project onto our line
+	placementPoint = CourseList[index].getClosestPointOnCurve(endpointmid)	
 
-	# get midpoint of projected points
-	placementPoint = rs.PointDivide(rs.PointAdd(projectedEndpoints[0], projectedEndpoints[1]), 2)
-	placementVector = rs.VectorCreate(projectedEndpoints[0], projectedEndpoints[1])
+	#hopefully vector's not too different
+	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
+
 	#rotate brick
-#	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
+	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
-	rotation = 0
-	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
+	newBrick = Brick3D(placementPoint, 0, CourseList[index])
 
 	return newBrick
-
 
 
 # find where to place bricks on top of these two closest bricks
@@ -303,7 +308,8 @@ def findBrickPlacement(closestBricks, index):
 
 	#get closest point on line to this midpoint
 	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
-	closestPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
+	#closestPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
+	closestPoint = rs.CurveArcLengthPoint(ContourCurves[index], closestParam)
 
 	closestBrickDistCurve = closestBricks[0].getDistanceOnCurve(closestBricks[1])
 
@@ -346,20 +352,27 @@ def addBrickToCourse(brickToPlace, index):
 
 def layNormalCourse(index, rhythm=0):
 	global BrickList
+	global CourseList
 	brickn = decideBrickNum(index)
-	print brickn
-	curvelen = rs.CurveLength(ContourCurves[index])
-	#averageGap = (curvelen - (brickn * BrickWidth)) / brickn
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 
+	print "LAYING"
+	#set provisional location
 	if(rhythm == 0):
 		provisionalLocation = 0
 	else:
 		provisionalLocation = index % rhythm	
+
+	print "this length curve = ", CourseList[index].length()
+	print "this length curve domain= ", rs.CurveDomain(CourseList[index].getCurve())
+
 	for i in xrange(brickn):
+		print "provisional=", provisionalLocation
 		# add a brick
 		newBrick = Brick3D([0,0,0], 0.3, CourseList[index])
 		newBrick.setLocationByParameter(provisionalLocation)
+		print "this brick location(pa)=",newBrick.getLocationAsParameter()
+		print "this brick location(po)=",newBrick.getLocationAsPoint()
 		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
@@ -450,8 +463,8 @@ def processInput():
 
 def layCourses():
 	for i in xrange(len(CourseList)):
-#		layNormalCourse(i, 2)
-		layStackingCourse(i)
+		layNormalCourse(i, 2)
+#		layStackingCourse(i)
 #	for i in xrange(len(CourseList)):
 """
 	for i in xrange(len(CourseList)):
