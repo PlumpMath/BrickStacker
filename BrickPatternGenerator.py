@@ -48,7 +48,7 @@ class Course:
 		hereTangent = self.getTangentVectorFromParameter(self.getClosestPointAsParameter(point))
 		print "getangle between", vector, "And", hereTangent
 		# get angle between these fectors, from hereTangent to Vector
-		print rs.VectorAngle(hereTangent, vector)
+		return math.radians(rs.VectorAngle(hereTangent, vector)) % (math.pi)
 		return rs.VectorAngle(hereTangent, vector)
 
 
@@ -82,7 +82,7 @@ class Brick3D:
 
 	def getEndpoints3D(self):
 		thisVector = rs.VectorScale(self.getVector(), (BrickWidth / 2))
-		DebugList.append([rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))])
+		#DebugList.append([rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))])
 		return [rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))]
 
 	def getVector(self):
@@ -262,13 +262,20 @@ def getFacingEndpoints3D(b1, b2):
 def getBearingEndpoints3D(b1,b2):
 	#get endpoints
 	endpoints = getFacingEndpoints3D(b1, b2)
+
+#	DebugList.append(endpoints)
+
 	bothBricks = [b1,b2]
+
+#	DebugList.append(map(lambda x:x.brickCenter, bothBricks))
 
 	bearingEndpoints = []
 	# get midpoints between these endpoints and midpoints of b1, b2 
 	# REALLY THIS SHOULD BE MIDPOINT OF BEARING IDEAL
 	for i in xrange(len(endpoints)):
 		bearingEndpoints.append(midpoint3D(endpoints[i], bothBricks[i].getLocationAsPoint()))	
+
+#	DebugList.append(bearingEndpoints)
 
 	return bearingEndpoints
 	
@@ -318,9 +325,11 @@ def findBrickBearingPlacement(closestBricks, index):
 	# get the two endpoints closest to each other
 	facingEndpoints = getBearingEndpoints3D(closestBricks[0],closestBricks[1])
 
-#	DebugList.append(facingEndpoints)
+	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
+
 	# get midpoint of endpoints
 	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
+
 
 	# and project onto our line
 	placementPoint = CourseList[index].getClosestPointAsPoint(endpointmid)	
@@ -328,9 +337,14 @@ def findBrickBearingPlacement(closestBricks, index):
 	#hopefully vector's not too different
 	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
 
+#	DebugList.append([placementVector])
+
 
 	#rotate brick
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
+
+	print "rotation=", rotation
+#	DebugList.append([rotation])
 
 	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
 	return newBrick
@@ -405,7 +419,7 @@ def layNormalCourse(index, rhythm=0):
 	for i in xrange(brickn):
 
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], 0.1, CourseList[index])
+		newBrick = Brick3D([0,0,0], 0.3, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
