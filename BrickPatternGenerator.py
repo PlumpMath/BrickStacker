@@ -33,6 +33,21 @@ class Course:
 	def getClosestParameterFromPoint(self, point):
 		return rs.CurveClosestPoint(self.courseCurve, point)
 
+	def getClosestPointOnCurve(self, point):
+		return rs.EvaluateCurve(self.courseCurve, self.getClosestParameterFromPoint(point))
+
+	def getTangentVectorFromParameter(self, parameter):
+		return rs.CurveCurvature(self.getCurve(), parameter)[1]		
+
+	def getRotationByPointVector(self, point, vector):
+		# get curvature at this point
+		hereTangent = self.getTangentVectorFromParameter(self.getClosestParameterFromPoint(point))
+#		print "getangle between", vector, hereTangent
+		print vector.Unitize()
+		print hereTangent.Unitize()
+		# get angle between these fectors, from hereTangent to Vector
+		return rs.VectorAngle(hereTangent, vector)
+
 
 class Brick3D:
 	#each 3d brick is defined as a point, direction, and course curve
@@ -102,14 +117,14 @@ class Brick3D:
 		B1EndPoints3D = self.getEndpoints3D()
 		B2EndPoints3D = b2.getEndpoints3D()
 	
-		print "Endpoints = ",endPoints3D
+#		print "Endpoints = ",endPoints3D
 
 		# get all distances between midpoint and all endpoints
 		pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
 		pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
 
-		print "Pb1", pointDistancesB1
-		print "Pb2", pointDistancesB2
+#		print "Pb1", pointDistancesB1
+#		print "Pb2", pointDistancesB2
 		# get closest two endpoints
 
 		closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
@@ -118,16 +133,7 @@ class Brick3D:
 		closestEndpointB2 = endPoints3D[closestEndpointIndexB2]
 
 		return [closestEndpointB1, closestEndpointB2]
-		# project those endpoints onto curve
-		
-		# get placementpoint: midpoint of endpoints
-		placementPoint = rs.PointDivide(rs.PointAdd(closestEndpointB1, closestEndpointB2), 2)
 
-		# get placement vector:
-		placementVector = rs.VectorCreate(closestEndpointB1, closestEndpointB2)
-		
-		print placementPoint
-		print placementVector
 	
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
@@ -254,29 +260,34 @@ def closestEndPoints(midPoint, closestBricks, index):
 	print midPoint
 	midPointParam = CourseList[index].getClosestParameterFromPoint(midPoint)
 	closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in map(lambda x: x.getLocationAsParameter(), closestBricks)]
-	print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
-	print "closest endpoints params=",closestEndpointParams	
-	print midPointParam	
+#	print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
+#	print "closest endpoints params=",closestEndpointParams	
+#	print midPointParam	
 
 
 
 # find where to place bricks on top of these two closest bricks, taking bearing (rotation) into account
 def findBrickBearingPlacement(closestBricks, index):
 	global BrickList
+	global CourseList
 
 	#get midpoint of bricks
 	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
 
-	print closestBricks[0].getFacingEndpoints3D(closestBricks[1])
+	# get the two endpoints closest to each other
+	facingEndpoints = closestBricks[0].getFacingEndpoints3D(closestBricks[1])
 
-	#get closest point on line to this midpoint
-	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
-	closestMidPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
+	# project endpoints onto our line
+	projectedEndpoints = [CourseList[index].getClosestPointOnCurve(apoint) for apoint in facingEndpoints]
 
+	# get midpoint of projected points
+	placementPoint = rs.PointDivide(rs.PointAdd(projectedEndpoints[0], projectedEndpoints[1]), 2)
+	placementVector = rs.VectorCreate(projectedEndpoints[0], projectedEndpoints[1])
 	#rotate brick
-	rotation = 0
+#	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
-	newBrick = Brick3D(closestMidPoint, rotation, CourseList[index])
+	rotation = 0
+	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
 
 	return newBrick
 
@@ -393,18 +404,28 @@ def layStackingCourse(index):
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
+				print ">> 1. two lcosest bricks =",closestBricks
 
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickBearingPlacement(closestBricks, index)
+				print ">> 2. brickToPlace =", brickToPlace
+
+#				DebugList.append(brickToPlace.getLocationAsPoint())
 
 				# actually, for each pair of bricks, try to spread out
 #				bricksToPlace = findBrickPlacements(closestBricks, index)
 
 				#print ">>>> ACTUALLY IDEAL PLACEMENT IS AT", brickToPlace.getLocationAsParameter() , "/", CourseList[index].length()
+				print "is supported?",brickIsSupported(brickToPlace, closestBricks, index)
+				print "does not overlap?",brickDoesNotOverlap(brickToPlace, index)
 
-				if(brickIsSupported(brickToPlace, closestBricks, index) and brickDoesNotOverlap(brickToPlace, index)):
+				#if(brickIsSupported(brickToPlace, closestBricks, index) and brickDoesNotOverlap(brickToPlace, index)):
+				if(brickDoesNotOverlap(brickToPlace, index)):
 					# place brick
+					print "BRICKPLACED"
 					addBrickToCourse(brickToPlace, index)
+				else:
+					print "no place no place"
 
 				# move provisional point to new location
 				provisionalBrick.setLocationByParameter(provisionalBrick.getLocationAsParameter() + BrickWidth)
