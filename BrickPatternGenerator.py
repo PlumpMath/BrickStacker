@@ -67,26 +67,31 @@ class Brick3D:
 	def setCourse(self, Course):
 		self.Course = Course
 
+	def setLocationByLength(self, length):
+		self.setLocationByPoint(rs.CurveArcLengthPoint(self.Course.getCurve(), length))
+
 	def setLocationByParameter(self, parameter):
 		self.curveParameter = parameter
-		#self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
-		self.brickCenter = rs.CurveArcLengthPoint(self.Course.getCurve(), parameter)
+		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
 
 	def setLocationByPoint(self, point):
 		self.brickCenter = point
-		self.curveParameter = rs.CurveClosestPoint(self.courseCurve, point)
+		self.curveParameter = rs.CurveClosestPoint(self.Course.getCurve(), point)
 
 	def getEndpoints3D(self):
 		return[rs.PointAdd(self.brickCenter, self.getVector()), rs.PointAdd(self.brickCenter, rs.VectorReverse(self.getVector()))] 
 
 	def getVector(self):
+		print "getvector"
+		print self.Course.getCurve(), self.curveParameter
+		print rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)
 		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
 
 	def getRotation(self):
 		return self.brickRotation
 
 	def getLocationAsParameter(self):
-		return self.curveParameter
+		return Brick3D.roundDecimal(self.curveParameter)
 		
 	def getLocationAsPoint(self):
 		return self.brickCenter
@@ -115,9 +120,10 @@ class Brick3D:
 
 		# get midpoitn in 3d
 		midPoint3D = self.getMidpoint3D(b2)
-
 		# get all endpoints in 3D
+		print "yo"
 		endPoints3D = self.getEndpoints3D() + b2.getEndpoints3D()
+		print "yo"
 
 		B1EndPoints3D = self.getEndpoints3D()
 		B2EndPoints3D = b2.getEndpoints3D()
@@ -273,17 +279,20 @@ def closestEndPoints(midPoint, closestBricks, index):
 
 # find where to place bricks on top of these two closest bricks, taking bearing (rotation) into account
 def findBrickBearingPlacement(closestBricks, index):
+	print ">> findBrickBearingPlacement, index =",index
 	global BrickList
 	global CourseList
 
 	#get midpoint of bricks
-	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
+	#midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
 
 	# get the two endpoints closest to each other
 	facingEndpoints = closestBricks[0].getFacingEndpoints3D(closestBricks[1])
 
 	# get midpoint of endpoints
 	endpointmid = rs.PointDivide(rs.PointAdd(facingEndpoints[0], facingEndpoints[1]), 2)
+
+	#DebugList.append(endpointmid)
 	# and project onto our line
 	placementPoint = CourseList[index].getClosestPointOnCurve(endpointmid)	
 
@@ -363,16 +372,14 @@ def layNormalCourse(index, rhythm=0):
 	else:
 		provisionalLocation = index % rhythm	
 
-	print "this length curve = ", CourseList[index].length()
-	print "this length curve domain= ", rs.CurveDomain(CourseList[index].getCurve())
-
 	for i in xrange(brickn):
-		print "provisional=", provisionalLocation
-		# add a brick
+#		print "provisional=", provisionalLocation
+		# add a brick, spaced apart
+
 		newBrick = Brick3D([0,0,0], 0.3, CourseList[index])
-		newBrick.setLocationByParameter(provisionalLocation)
-		print "this brick location(pa)=",newBrick.getLocationAsParameter()
-		print "this brick location(po)=",newBrick.getLocationAsPoint()
+		newBrick.setLocationByLength(provisionalLocation)
+#		print "this brick location(pa)=",newBrick.getLocationAsParameter()
+#		print "this brick location(po)=",newBrick.getLocationAsPoint()
 		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
@@ -417,11 +424,11 @@ def layStackingCourse(index):
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
-				print ">> 1. two lcosest bricks =",closestBricks
+				print ">>> 1. two closest bricks =",closestBricks
 
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickBearingPlacement(closestBricks, index)
-				print ">> 2. brickToPlace =", brickToPlace
+				print ">>> 2. brickToPlace =", brickToPlace
 
 #				DebugList.append(brickToPlace.getLocationAsPoint())
 
