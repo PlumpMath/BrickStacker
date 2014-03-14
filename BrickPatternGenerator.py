@@ -86,7 +86,14 @@ class Brick3D:
 		self.Course = Course
 
 	def setLocationByLength(self, length):
+		print length
+#		print rs.CurveArcLengthPoint(self.Course.getCurve(), length)
+		if(self.Course.isClosed()):
+			length %= self.Course.length()
+
+
 		self.setLocationByPoint(rs.CurveArcLengthPoint(self.Course.getCurve(), length))
+#		print self.brickCenter
 
 	def setLocationByParameter(self, parameter):
 		self.curveParameter = parameter
@@ -119,7 +126,8 @@ class Brick3D:
 		return self.curveParameter
 	
 	def getLocationAsLength(self):
-		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
+		return ghcomp.LengthParameter(self.getCourse().getCurve(), self.curveParameter)[0]
+#		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
 
 	def getLocationAsPoint(self):
 		return self.brickCenter
@@ -416,6 +424,8 @@ def addBrickToCourse(brickToPlace, index):
 def layNormalCourse(index, rhythm=0):
 	global BrickList
 	global CourseList
+	global DebugList2
+
 	brickn = decideBrickNum(index)
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 
@@ -441,6 +451,7 @@ def layNormalCourse(index, rhythm=0):
 		# move the new location to the brick width, plus the gap
 		provisionalLocation += BrickWidth + averageGap
 
+	print "bricklist=", map(lambda x: x.getLocationAsLength(), BrickList[index])
 
 def layStackingCourse(index):
 	global BrickList
