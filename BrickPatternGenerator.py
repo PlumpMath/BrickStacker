@@ -81,13 +81,18 @@ class Brick3D:
 		self.curveParameter = rs.CurveClosestPoint(self.Course.getCurve(), point)
 
 	def getEndpoints3D(self):
-		return[rs.PointAdd(self.brickCenter, self.getVector()), rs.PointAdd(self.brickCenter, rs.VectorReverse(self.getVector()))] 
+		thisVector = rs.VectorScale(self.getVector(), (BrickWidth / 2))
+		DebugList.append([rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))])
+		return [rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))]
 
 	def getVector(self):
-#		print "getVector()"
+		print "getVector()"
 #		print self.Course.getCurve(), self.curveParameter
-		thisVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
-		return rs.VectorRotate(thisVector, self.brickRotation, [0,0,1])
+		curveVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
+		print math.degrees(self.brickRotation)
+		print curveVector
+		rotatedVec = rs.VectorRotate(curveVector,  math.degrees(self.brickRotation), [0,0,1])
+		return rotatedVec
 		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
 
 	def getRotation(self):
@@ -228,13 +233,14 @@ def getFacingEndpoints3D(b1, b2):
 	global DebugList
 
 	print "getFacingEndpoints3D"
-	# get midpoitn in 3d
+	# get the midpoints of the bricks
 	midPoint3D = b1.getMidpoint3D(b2)
 
+	# get all endpoints
 	B1EndPoints3D = b1.getEndpoints3D()
 	B2EndPoints3D = b2.getEndpoints3D()
 
-	DebugList.append(B1EndPoints3D)
+#	DebugList.append(B1EndPoints3D + B2EndPoints3D)
 #		print "Endpoints = ",endPoints3D
 
 	# get all distances between midpoint and all endpoints
@@ -305,14 +311,14 @@ def findBrickBearingPlacement(closestBricks, index):
 	global CourseList
 	global DebugList
 	#get midpoint of bricks
-	#midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
+	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
+	
+#	DebugList.append([midPoint])
 
 	# get the two endpoints closest to each other
 	facingEndpoints = getBearingEndpoints3D(closestBricks[0],closestBricks[1])
 
-RIGHT facingENDPOINTS NOT QUICE WORKING:w
-
-	DebugList.append(facingEndpoints)
+#	DebugList.append(facingEndpoints)
 	# get midpoint of endpoints
 	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
 
