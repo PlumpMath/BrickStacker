@@ -1,7 +1,8 @@
-import sys
 import rhinoscriptsyntax as rs
 from Grasshopper.Kernel.Data import GH_Path
 from Grasshopper import DataTree
+import ghpythonlib.components as ghcomp
+import sys
 import gc
 import math
 import copy
@@ -10,12 +11,11 @@ DECIMALPRECISION = 3
 CourseList= []
 BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
+DebugTwo = []
 
-PRINTLEVEL = 2
-# this is our own printing 
-def printL(level, stuff):
-	if(level >= PRINTLEVEL):
-		print stuff
+def printBOLD(stuff):
+	global DebugTwo
+	DebugTwo = stuff
 
 def midpoint3D(p1, p2):
 	# get midpoint of endpoints
@@ -24,8 +24,8 @@ def midpoint3D(p1, p2):
 def roundDecimal(num):
 	global DECIMALPRECISION
 	#ugly but clean
-#		return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
-	return round(num, DECIMALPRECISION)
+	return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
+	#return round(num, DECIMALPRECISION)
 
 
 #IMPLEMENT SO THAT EACH BRICK DOES NOT HAVE THE ENTIER CURVE INSIDE OF IT
@@ -34,7 +34,7 @@ class Course:
 	def __init__(self, curve):
 		self.courseCurve = curve
 		self.courseBricks = []
-		self.courseLen = rs.CurveLength(curve)
+		self.courseLen = roundDecimal(rs.CurveLength(curve))
 		self.isClosedCurve = rs.IsCurveClosed(curve)
 
 	def getCurve(self):
@@ -62,10 +62,14 @@ class Course:
 	def getRotationByPointVector(self, point, vector):
 		# get curvature at this point
 		hereTangent = self.getTangentVectorFromParameter(self.getClosestPointAsParameter(point))
+
+		DebugList.append([hereTangent])
+		
 		print "getangle between", vector, "And", hereTangent
 		# get angle between these fectors, from hereTangent to Vector
-		return math.radians(rs.VectorAngle(hereTangent, vector)) % (math.pi)
-		return rs.VectorAngle(hereTangent, vector)
+		# THIS NEEDS TO BE RESTRICTED TO THE XY PLANE
+		# which is why we use grasshopper components; python can't restrict to XY plane
+		return ghcomp.Angle(hereTangent, vector, rs.WorldXYPlane())[0]
 
 
 class Brick3D:
@@ -107,6 +111,7 @@ class Brick3D:
 		curveVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
 #		print math.degrees(self.brickRotation)
 #		print curveVector
+		#rotatedVec = rs.VectorRotate(rs.VectorReverse(curveVector),  math.degrees(self.brickRotation), [0,0,1])
 		rotatedVec = rs.VectorRotate(curveVector,  math.degrees(self.brickRotation), [0,0,1])
 		return rotatedVec
 		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
@@ -332,26 +337,29 @@ def findBrickBearingPlacement(closestBricks, index):
 	# get the two endpoints closest to each other
 	facingEndpoints = getBearingEndpoints3D(closestBricks[0],closestBricks[1])
 
-	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
+#	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
 
 	# get midpoint of endpoints
 	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
 
+	DebugList.append([CourseList[index].getCurve()])
 
 	# and project onto our line
 	placementPoint = CourseList[index].getClosestPointAsPoint(endpointmid)	
 
+	DebugList.append([placementPoint])
+
 	#hopefully vector's not too different
 	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
 
-#	DebugList.append([placementVector])
+	DebugList.append([placementVector])
 
 
 	#rotate brick
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
 	print "rotation=", rotation
-#	DebugList.append([rotation])
+	DebugList.append([rotation])
 
 	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
 	return newBrick
@@ -443,11 +451,11 @@ def layStackingCourse(index):
 	global CourseList
 	
 	print " "
-	print "######################################"
-	print "##### PLACING BRICK COURSE", index
-	print "######################################"
+	print "###########################################"
+	print "##### PLACING BRICK COURSE", index, " ----", 
+	print "length = ", CourseList[index].length()
+	print "###########################################"
 	print " "
-	print "course len = ", CourseList[index].length()
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
@@ -457,13 +465,16 @@ def layStackingCourse(index):
 		provisionalBrick = Brick3D([0,0,0], 0, CourseList[index])
 		provisionalBrick.setLocationByLength(0)
 
-		print "course underneath =",
-		print map(lambda x: x.getLocationAsLength(), BrickList[index-1])
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
 
 			#if we have two or more bricks on our floor below us
 			if(len(BrickList[index - 1]) >= 2):
 
+				print "*** COURSE", index,", BRICK #", i
+				print " "
+
+				print "course underneath =",
+				print map(lambda x: x.getLocationAsLength(), BrickList[index-1])
 			#PROCESS:
 				# set a provisional brick
 				# find two closest bricks
