@@ -29,13 +29,15 @@ class Course:
 
 	def isClosed(self):
 		return self.isClosedCurve
-
-	def getClosestParameterFromPoint(self, point):
+	
+	def getClosestPointAsLength(self, point):
+		return rs.CurveLength(self.courseCurve, -1, [0, self.getClosestPointAsParameter(point)])
+	
+	def getClosestPointAsParameter(self, point):
 		return rs.CurveClosestPoint(self.courseCurve, point)
 
-	def getClosestPointOnCurve(self, point):
-		#return rs.EvaluateCurve(self.courseCurve, self.getClosestParameterFromPoint(point))
-		return rs.CurveArcLengthPoint(self.courseCurve, self.getClosestParameterFromPoint(point))
+	def getClosestPointAsPoint(self, point):
+		return rs.EvaluateCurve(self.courseCurve, self.getClosestPointAsParameter(point))
 
 	def getTangentVectorFromParameter(self, parameter):
 		return rs.CurveTangent(self.getCurve(), parameter)		
@@ -43,11 +45,10 @@ class Course:
 
 	def getRotationByPointVector(self, point, vector):
 		# get curvature at this point
-		hereTangent = self.getTangentVectorFromParameter(self.getClosestParameterFromPoint(point))
-#		print "getangle between", vector, hereTangent
-#		print vector.Unitize()
-#		print hereTangent.Unitize()
+		hereTangent = self.getTangentVectorFromParameter(self.getClosestPointAsParameter(point))
+		print "getangle between", vector, "And", hereTangent
 		# get angle between these fectors, from hereTangent to Vector
+		print rs.VectorAngle(hereTangent, vector)
 		return rs.VectorAngle(hereTangent, vector)
 
 
@@ -85,8 +86,8 @@ class Brick3D:
 	def getVector(self):
 #		print "getVector()"
 #		print self.Course.getCurve(), self.curveParameter
-#		print rs.CurveArcLengthPoint(self.Course.getCurve(), self.curveParameter)
-		return rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
+		thisVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
+		return rs.VectorRotate(thisVector, self.brickRotation, [0,0,1])
 		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
 
 	def getRotation(self):
@@ -120,34 +121,6 @@ class Brick3D:
 	def getMidpoint3D(self, b2):
 		return rs.PointDivide(rs.PointAdd(self.getLocationAsPoint(), b2.getLocationAsPoint()), 2)
 		
-
-	def getFacingEndpoints3D(self, b2):
-		print "getFacingEndpoints3D"
-		# get midpoitn in 3d
-		midPoint3D = self.getMidpoint3D(b2)
-		# get all endpoints in 3D
-		endPoints3D = self.getEndpoints3D() + b2.getEndpoints3D()
-
-		B1EndPoints3D = self.getEndpoints3D()
-		B2EndPoints3D = b2.getEndpoints3D()
-	
-#		print "Endpoints = ",endPoints3D
-
-		# get all distances between midpoint and all endpoints
-		pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
-		pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
-
-#		print "Pb1", pointDistancesB1
-#		print "Pb2", pointDistancesB2
-		# get closest two endpoints
-
-		closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
-		closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
-		closestEndpointB1 = endPoints3D[closestEndpointIndexB1]
-		closestEndpointB2 = endPoints3D[closestEndpointIndexB2]
-
-		return [closestEndpointB1, closestEndpointB2]
-
 	
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
@@ -251,6 +224,48 @@ def isCourseFull(index):
 	return True
 
 
+def getFacingEndpoints3D(b1, b2):
+	global DebugList
+
+	print "getFacingEndpoints3D"
+	# get midpoitn in 3d
+	midPoint3D = b1.getMidpoint3D(b2)
+
+	B1EndPoints3D = b1.getEndpoints3D()
+	B2EndPoints3D = b2.getEndpoints3D()
+
+	DebugList.append(B1EndPoints3D)
+#		print "Endpoints = ",endPoints3D
+
+	# get all distances between midpoint and all endpoints
+	pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
+	pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
+
+	print "Pb1", pointDistancesB1
+	print "Pb2", pointDistancesB2
+	# get closest two endpoints
+
+	closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
+	closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
+	closestEndpointB1 = B1EndPoints3D[closestEndpointIndexB1]
+	closestEndpointB2 = B2EndPoints3D[closestEndpointIndexB2]
+
+	return [closestEndpointB1, closestEndpointB2]
+
+
+def getBearingEndpoints3D(b1,b2):
+	#get endpoints
+	endpoints = getFacingEndpoints3D(b1, b2)
+	bothBricks = [b1,b2]
+
+	bearingEndpoints = []
+	# get midpoints between these endpoints and midpoints of b1, b2 
+	# REALLY THIS SHOULD BE MIDPOINT OF BEARING IDEAL
+	for i in xrange(len(endpoints)):
+		bearingEndpoints.append(midpoint3D(endpoints[i], bothBricks[i].getLocationAsPoint()))	
+
+	return bearingEndpoints
+	
 
 # get distances from this brick to lower bricks - in 3D space.
 def getClosestTwoBricks3D(thisbrick, index):
@@ -272,40 +287,46 @@ def closestEndPoints(midPoint, closestBricks, index):
 	global CourseList
 
 	print midPoint
-	midPointParam = CourseList[index].getClosestParameterFromPoint(midPoint)
+	midPointParam = CourseList[index].getClosestPointAsParameter(midPoint)
 	closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in map(lambda x: x.getLocationAsParameter(), closestBricks)]
 #	print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
 #	print "closest endpoints params=",closestEndpointParams	
 #	print midPointParam	
 
 
+def midpoint3D(p1, p2):
+	# get midpoint of endpoints
+	return rs.PointDivide(rs.PointAdd(p1, p2), 2)
+
 
 # find where to place bricks on top of these two closest bricks, taking bearing (rotation) into account
 def findBrickBearingPlacement(closestBricks, index):
 	global BrickList
 	global CourseList
-
+	global DebugList
 	#get midpoint of bricks
 	#midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
 
 	# get the two endpoints closest to each other
-	facingEndpoints = closestBricks[0].getFacingEndpoints3D(closestBricks[1])
+	facingEndpoints = getBearingEndpoints3D(closestBricks[0],closestBricks[1])
 
+RIGHT facingENDPOINTS NOT QUICE WORKING:w
+
+	DebugList.append(facingEndpoints)
 	# get midpoint of endpoints
-	endpointmid = rs.PointDivide(rs.PointAdd(facingEndpoints[0], facingEndpoints[1]), 2)
+	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
 
-	#DebugList.append(endpointmid)
 	# and project onto our line
-	placementPoint = CourseList[index].getClosestPointOnCurve(endpointmid)	
+	placementPoint = CourseList[index].getClosestPointAsPoint(endpointmid)	
 
 	#hopefully vector's not too different
 	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
 
+
 	#rotate brick
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
-	newBrick = Brick3D(placementPoint, 0, CourseList[index])
-	print "newbrick=", newBrick.getLocationAsLength()
+	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
 	return newBrick
 
 
@@ -378,7 +399,7 @@ def layNormalCourse(index, rhythm=0):
 	for i in xrange(brickn):
 
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], 0, CourseList[index])
+		newBrick = Brick3D([0,0,0], 0.1, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
@@ -480,7 +501,9 @@ def outputCourses():
 	global BrickPattern
 	global BrickVectors
 	global BrickRotation
+	global DebugList
 	#output what we've got
+	DebugList = ListofListsToTree(DebugList)
 	BrickPattern = ListofListsToTree([map(lambda x: x.getLocationAsParameter(), alist) for alist in BrickList])
 	BrickPoints = ListofListsToTree([map(lambda x: x.getLocationAsPoint(), alist) for alist in BrickList])
 	BrickVectors = ListofListsToTree([map(lambda x: x.getVector(), alist) for alist in BrickList])
