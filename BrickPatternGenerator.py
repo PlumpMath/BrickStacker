@@ -11,6 +11,22 @@ CourseList= []
 BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
 
+PRINTLEVEL = 2
+# this is our own printing 
+def printL(level, stuff):
+	if(level >= PRINTLEVEL):
+		print stuff
+
+def midpoint3D(p1, p2):
+	# get midpoint of endpoints
+	return rs.PointDivide(rs.PointAdd(p1, p2), 2)
+
+def roundDecimal(num):
+	global DECIMALPRECISION
+	#ugly but clean
+#		return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
+	return round(num, DECIMALPRECISION)
+
 
 #IMPLEMENT SO THAT EACH BRICK DOES NOT HAVE THE ENTIER CURVE INSIDE OF IT
 class Course:
@@ -86,11 +102,11 @@ class Brick3D:
 		return [rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))]
 
 	def getVector(self):
-		print "getVector()"
+#		print "getVector()"
 #		print self.Course.getCurve(), self.curveParameter
 		curveVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
-		print math.degrees(self.brickRotation)
-		print curveVector
+#		print math.degrees(self.brickRotation)
+#		print curveVector
 		rotatedVec = rs.VectorRotate(curveVector,  math.degrees(self.brickRotation), [0,0,1])
 		return rotatedVec
 		return rs.CurveCurvature(self.Course.getCurve(), self.curveParameter)[1]		
@@ -102,7 +118,7 @@ class Brick3D:
 		return self.curveParameter
 	
 	def getLocationAsLength(self):
-		return Brick3D.roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
+		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
 
 	def getLocationAsPoint(self):
 		return self.brickCenter
@@ -133,21 +149,15 @@ class Brick3D:
 		if(self.isCurveClosed):
 			if((pb2 - pb1) <= (curveLen / 2)):
 				#if the two bricks are close enough on a closed curve as to not wrap around
-				return Brick3D.roundDecimal((pb1 + pb2) / 2)
+				return roundDecimal((pb1 + pb2) / 2)
 			else:
 				#no, they wrap around, accomodate for that
-				return Brick3D.roundDecimal((pb2 + ((curveLen - pb2 + pb1) / 2)) % curveLen)
+				return roundDecimal((pb2 + ((curveLen - pb2 + pb1) / 2)) % curveLen)
 		else:
 			#vanilla
-			return Brick3D.roundDecimal((pb1 + pb2) / 2)
+			return roundDecimal((pb1 + pb2) / 2)
 
 #
-
-	@classmethod
-	def roundDecimal(self, num):
-		global DECIMALPRECISION
-		return round(num, DECIMALPRECISION)
-
 
 class Brick:
 	def __init__(self, courseLength, brickCenter, brickRotation):
@@ -232,7 +242,7 @@ def isCourseFull(index):
 def getFacingEndpoints3D(b1, b2):
 	global DebugList
 
-	print "getFacingEndpoints3D"
+#	print "getFacingEndpoints3D"
 	# get the midpoints of the bricks
 	midPoint3D = b1.getMidpoint3D(b2)
 
@@ -247,8 +257,8 @@ def getFacingEndpoints3D(b1, b2):
 	pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
 	pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
 
-	print "Pb1", pointDistancesB1
-	print "Pb2", pointDistancesB2
+#	print "Pb1", pointDistancesB1
+#	print "Pb2", pointDistancesB2
 	# get closest two endpoints
 
 	closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
@@ -307,9 +317,6 @@ def closestEndPoints(midPoint, closestBricks, index):
 #	print midPointParam	
 
 
-def midpoint3D(p1, p2):
-	# get midpoint of endpoints
-	return rs.PointDivide(rs.PointAdd(p1, p2), 2)
 
 
 # find where to place bricks on top of these two closest bricks, taking bearing (rotation) into account
@@ -408,7 +415,7 @@ def layNormalCourse(index, rhythm=0):
 	brickn = decideBrickNum(index)
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 
-	print ">>>>>> LAYING NORMAL COURSE #", index
+	print ">>> LAYING NORMAL COURSE #", index
 	#set provisional location
 	if(rhythm == 0):
 		provisionalLocation = 0
@@ -435,8 +442,12 @@ def layStackingCourse(index):
 	global BrickList
 	global CourseList
 	
-	print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>PLACING BRICK COURSE", index
-	print ">>>>>>>>> COURSE LEN = ", CourseList[index].length()
+	print " "
+	print "######################################"
+	print "##### PLACING BRICK COURSE", index
+	print "######################################"
+	print " "
+	print "course len = ", CourseList[index].length()
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
@@ -446,7 +457,7 @@ def layStackingCourse(index):
 		provisionalBrick = Brick3D([0,0,0], 0, CourseList[index])
 		provisionalBrick.setLocationByLength(0)
 
-		print "PREVIOUS COURSE =",
+		print "course underneath =",
 		print map(lambda x: x.getLocationAsLength(), BrickList[index-1])
 		for i in xrange(brickn * 2): # this should be a while(True) loop but gh lets python run FOREVER so let's be safe
 
@@ -465,7 +476,7 @@ def layStackingCourse(index):
 				if(isCourseFull(index)):
 					continue
 
-				print ">>>>>>> PROVISIONAL BRICK #", i, "/", brickn,"AT", provisionalBrick.getLocationAsLength()
+				print ">> provisional brick (", i, "/", brickn,") at", provisionalBrick.getLocationAsLength()
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
