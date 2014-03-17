@@ -75,6 +75,9 @@ class Brick3D:
 		self.Course = Course
 		self.setLocationByPoint(point)
 
+	def __str__(self):
+		return "brick at "+ str(self.brickCenter)+ "w/"+ str(self.brickRotation) +" rad rotation"
+
 	def setRotation(self, rotation):
 		self.brickRotation = rotation
 
@@ -170,7 +173,7 @@ class Brick3D:
 
 	@classmethod
 	def newBrickWidthAfterRotation(self, rotation):
-		return math.cos(rotation) * BrickWidth
+		return abs(math.cos(rotation) * BrickWidth)
 
 	@classmethod 
 	def getFacingEndpoints3D(self,b1, b2):
@@ -368,28 +371,6 @@ def findBrickBearingPlacement(closestBricks, index):
 	return newBrick
 
 
-# find where to place bricks on top of these two closest bricks
-# actually, for each pair of bricks, try to spread out and place three bricks
-def findBrickPlacement(closestBricks, index):
-	global BrickList
-
-	#get midpoint of bricks
-	midPoint = closestBricks[0].getMidpoint3D(closestBricks[1])
-
-	#get closest point on line to this midpoint
-	closestParam = rs.CurveClosestPoint(ContourCurves[index], midPoint)
-	closestPoint = rs.EvaluateCurve(ContourCurves[index], closestParam)
-	#closestPoint = rs.CurveArcLengthPoint(ContourCurves[index], closestParam)
-
-	closestBrickDistCurve = closestBricks[0].getDistanceOnCurve(closestBricks[1])
-
-	#rotate brick none, for now
-	rotation = 0
-
-	newBrick = Brick3D(closestPoint, rotation, CourseList[index])
-
-	return newBrick
-
 
 # check if brick overlaps or not
 def brickDoesNotOverlap(brickToPlace, index):
@@ -397,10 +378,12 @@ def brickDoesNotOverlap(brickToPlace, index):
 
 	# are there any bricks that are within BrickWidth distance of brickToPlace?
 	for aBrick in (BrickList[index]):
-		if(brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)):
+		brickToPlace.getDistance3D(aBrick)
+		#print "brickToPlace=",brickToPlace
+		#print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > "
+		#print (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)
+		if(brickToPlace.getDistance3D(aBrick) != 0 and (brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin))):
 			print "UHOH"
-			print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > but is < ",
-			print (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)
 			return False
 
 	return True
@@ -540,9 +523,9 @@ def layStackingCourse(index):
 					printIf(dbg2, ">>> 3. Brick NOT PLACED")
 
 				# move provisional point to new location
-				printIf(dbg2, "moving brick", i,"course", index, "provisional point to new location")
+				printIf(dbg2, "moving (Brick", i,"Course", index, ") provisional point to new location")
 				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + Brick3D.newBrickWidthAfterRotation(provisionalBrick.getRotation()))
-				printIf(dbg2, "rotation=", brickToPlace.getRotation() ,"newBWafterotation=",Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()))
+				printIf(dbg2, "rotation=", brickToPlace.getRotation() ,"\nnewBWafterotation=",Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()))
 				printIf(dbg2, "BW=", BrickWidth)
 
 
