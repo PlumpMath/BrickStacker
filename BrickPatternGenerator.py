@@ -78,7 +78,7 @@ class Brick3D:
 		self.brickCenter = point
 		self.brickRotation = rotation
 		self.Course = Course
-		self.curveParameter = rs.CurveClosestPoint(Course.getCurve(), point)
+		self.setLocationByPoint(point)
 
 	def setRotation(self, rotation):
 		self.brickRotation = rotation
@@ -90,18 +90,19 @@ class Brick3D:
 		print length
 		if(self.Course.isClosed()):
 			length %= self.Course.length()
-
-
+		self.curveLenParameter = length
 		self.setLocationByPoint(rs.CurveArcLengthPoint(self.Course.getCurve(), length))
-#		print self.brickCenter
+		self.curveParameter = rs.CurveClosestPoint(self.Course.getCurve(), self.brickCenter)
 
-	def setLocationByParameter(self, parameter):
-		self.curveParameter = parameter
-		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
+#	def setLocationByParameter(self, parameter):
+#		self.curveParameter = parameter
+#		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), parameter)
 
 	def setLocationByPoint(self, point):
-		self.brickCenter = point
+#		self.brickCenter = point
 		self.curveParameter = rs.CurveClosestPoint(self.Course.getCurve(), point)
+		self.brickCenter = rs.EvaluateCurve(self.Course.getCurve(), self.curveParameter)
+		self.curveLenParameter = rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter])
 
 	def getEndpoints3D(self):
 		thisVector = rs.VectorScale(self.getVector(), (BrickWidth / 2))
@@ -109,7 +110,6 @@ class Brick3D:
 		return [rs.PointAdd(self.brickCenter, thisVector), rs.PointAdd(self.brickCenter, rs.VectorReverse(thisVector))]
 
 	def getVector(self):
-#		print "getVector()"
 #		print self.Course.getCurve(), self.curveParameter
 		curveVector = rs.CurveTangent(self.Course.getCurve(), self.curveParameter)		
 #		print math.degrees(self.brickRotation)
@@ -127,7 +127,8 @@ class Brick3D:
 	
 	def getLocationAsLength(self):
 #		return ghcomp.LengthParameter(self.getCourse().getCurve(), self.curveParameter)[0]
-		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
+#		return roundDecimal(rs.CurveLength(self.getCourse().getCurve(), -1, [0, self.curveParameter]))
+		return self.curveLenParameter
 
 	def getLocationAsPoint(self):
 		return self.brickCenter
