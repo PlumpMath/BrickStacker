@@ -13,8 +13,9 @@ BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
 DebugList2 = []
 
-dbg = False 
+dbg = True
 dbg2 = True
+dbg3 = True
 """
 #######################
 #### CLASSES START ####
@@ -59,10 +60,12 @@ class Course:
 
 		DebugList.append([hereTangent])
 		
-		printIf(dbg, "getangle between", vector, "And", hereTangent)
+		printIf(dbg2, "getangle between", roundVecPt(vector), "And", roundVecPt(hereTangent))
 		# get angle between these fectors, from hereTangent to Vector
 		# THIS NEEDS TO BE RESTRICTED TO THE XY PLANE
 		# which is why we use grasshopper components; python can't restrict to XY plane
+		printIf(dbg2, "hereTangent=", hereTangent)
+		printIf(dbg2, ghcomp.Angle(hereTangent, vector, rs.WorldXYPlane()))
 		return ghcomp.Angle(hereTangent, vector, rs.WorldXYPlane())[0]
 
 
@@ -227,10 +230,15 @@ class Brick3D:
 		thisdistances = map(lambda x: thisbrick.getDistance3D(x), abricklist)
 		#okay, get the indices of the closest midpoint (sort and return keys)
 
-		closestIndex = sorted(range(len(thisdistances)), key=lambda k: thisdistances[k])[0:2]
+		closestIndex = sorted(range(len(thisdistances)), key=lambda k: thisdistances[k])
+
+		print "#############"
+		printIf(dbg2, "c;osestIndex=",closestIndex)
+		print [abricklist[i].getLocationAsLength() for i in closestIndex]
+		print "#############"
 
 		#okay, get the locations of the cloeset lower bricks
-		return [abricklist[i] for i in closestIndex]
+		return [abricklist[i] for i in closestIndex[0:2]]
 
 
 
@@ -251,6 +259,11 @@ def roundDecimal(num):
 	#ugly but clean
 	return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
 	#return round(num, DECIMALPRECISION)
+
+def roundVecPt(vec):
+	printIf(dbg, "roundVecPt(",vec,")==>", map(lambda x: roundDecimal(x), vec))
+	return map(lambda x: roundDecimal(x), vec)
+
 
 def printIf(*arg):
 	if(arg[0]):
@@ -335,10 +348,17 @@ def findBrickBearingPlacement(closestBricks, index):
 	
 #	DebugList.append([midPoint])
 
+	printIf(dbg2, "closestBricks", map(lambda x: str(x),closestBricks))
 	# get the two endpoints closest to each other
 	facingEndpoints = Brick3D.getBearingEndpoints3D(closestBricks[0],closestBricks[1])
+	printIf(dbg2, "facingEndpoints", facingEndpoints)
 
 	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
+
+#hopefully vector's not too different
+	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
+	DebugList.append([placementVector])
+	printIf(dbg2, "placementVector=", placementVector)
 
 	# get midpoint of endpoints
 	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
@@ -350,10 +370,6 @@ def findBrickBearingPlacement(closestBricks, index):
 
 	DebugList.append([placementPoint])
 
-	#hopefully vector's not too different
-	placementVector = rs.VectorCreate(facingEndpoints[0], facingEndpoints[1])
-
-	DebugList.append([placementVector])
 
 
 	#rotate brick
@@ -368,8 +384,8 @@ def findBrickBearingPlacement(closestBricks, index):
 		rotation += 10 / (rs.Distance(placementPoint, AttractorPoint) )
 
 	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
+	print "newBrick=", newBrick
 	return newBrick
-
 
 
 # check if brick overlaps or not
@@ -380,9 +396,9 @@ def brickDoesNotOverlap(brickToPlace, index):
 	for aBrick in (BrickList[index]):
 		brickToPlace.getDistance3D(aBrick)
 		#print "brickToPlace=",brickToPlace
-		#print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > "
+		print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > "
 		#print (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)
-		if(brickToPlace.getDistance3D(aBrick) != 0 and (brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin))):
+		if(brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)):
 			print "UHOH"
 			return False
 
@@ -463,6 +479,7 @@ def layStackingCourse(index):
 	global dbg
 
 	printIf(dbg, " ")
+	printIf(dbg, "COURSEMARKER")
 	printIf(dbg, "###########################################")
 	printIf(dbg, "##### PLACING BRICK COURSE", index, " ----" )
 	printIf(dbg, "length = ", CourseList[index].length())
