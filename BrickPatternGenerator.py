@@ -23,6 +23,9 @@ def roundDecimal(num):
 	return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
 	#return round(num, DECIMALPRECISION)
 
+def printIf(*arg):
+	if(arg[0]):
+		print ' '.join(map(str, list(arg[1:])))
 
 #IMPLEMENT SO THAT EACH BRICK DOES NOT HAVE THE ENTIER CURVE INSIDE OF IT
 class Course:
@@ -72,11 +75,9 @@ class Brick3D:
 	#each 3d brick is defined as a point, direction, and course curve
 	#constructor
 	def __init__(self, point, rotation, Course):
-		#self.brickWidth = brickWidth
 		self.brickCenter = point
 		self.brickRotation = rotation
 		self.Course = Course
-#		self.courseCurve = curve
 		self.curveParameter = rs.CurveClosestPoint(Course.getCurve(), point)
 
 	def setRotation(self, rotation):
@@ -87,7 +88,6 @@ class Brick3D:
 
 	def setLocationByLength(self, length):
 		print length
-#		print rs.CurveArcLengthPoint(self.Course.getCurve(), length)
 		if(self.Course.isClosed()):
 			length %= self.Course.length()
 
@@ -362,7 +362,7 @@ def findBrickBearingPlacement(closestBricks, index):
 	#rotate brick
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
-	#rotation += (0.03  * (len(CourseList)-index))
+#	rotation += (0.05  * (len(CourseList)-index))
 	print "rotation=", rotation
 	DebugList.append([rotation])
 
@@ -442,7 +442,7 @@ def layNormalCourse(index, rhythm=0):
 	for i in xrange(brickn):
 
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], 0.0, CourseList[index])
+		newBrick = Brick3D([0,0,0], -0.3, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
@@ -455,16 +455,28 @@ def layNormalCourse(index, rhythm=0):
 
 #	print "bricklist=", map(lambda x: x.getLocationAsLength(), BrickList[index])
 
+
+#this places bricks at the edges of a curve
+# if applicable (aka curve is closed)
+def layEdges(index):
+	if(index == 0):
+		return
+
+	
+	
+
+
 def layStackingCourse(index):
 	global BrickList
 	global CourseList
 	
-	print " "
-	print "###########################################"
-	print "##### PLACING BRICK COURSE", index, " ----", 
-	print "length = ", CourseList[index].length()
-	print "###########################################"
-	print " "
+	dbg = True
+	printIf(dbg, " ")
+	printIf(dbg, "###########################################")
+	printIf(dbg, "##### PLACING BRICK COURSE", index, " ----" )
+	printIf(dbg, "length = ", CourseList[index].length())
+	printIf(dbg, "###########################################")
+	printIf(dbg, " ")
 	brickn = decideBrickNum(index)
 
 	if(index == 0):
@@ -479,11 +491,11 @@ def layStackingCourse(index):
 			#if we have two or more bricks on our floor below us
 			if(len(BrickList[index - 1]) >= 2):
 
-				print "*** COURSE", index,", BRICK #", i
-				print " "
+				printIf(dbg, "*** COURSE", index,", BRICK #", i)
+				printIf(dbg, " ")
 
-				print "course underneath =",
-				print map(lambda x: x.getLocationAsLength(), BrickList[index-1])
+				printIf(dbg, "course underneath =",)
+				printIf(dbg, map(lambda x: x.getLocationAsLength(), BrickList[index-1]))
 			#PROCESS:
 				# set a provisional brick
 				# find two closest bricks
@@ -496,11 +508,11 @@ def layStackingCourse(index):
 				if(isCourseFull(index)):
 					continue
 
-				print ">> provisional brick (", i, "/", brickn,") at", provisionalBrick.getLocationAsLength()
+				printIf(dbg, ">> provisional brick (", i, "/", brickn,") at", provisionalBrick.getLocationAsLength())
 
 				# find two closest bricks 
 				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
-				print ">>> 1. two closest bricks from", provisionalBrick.getLocationAsLength(), "=",map(lambda x:x.getLocationAsLength(), closestBricks), "on curve with len", closestBricks[0].getCourse().length()
+				printIf(dbg, ">>> 1. two closest bricks from", provisionalBrick.getLocationAsLength(), "=",map(lambda x:x.getLocationAsLength(), closestBricks), "on curve with len", closestBricks[0].getCourse().length())
 
 				# find where to place bricks on top of these two closest bricks
 				brickToPlace = findBrickBearingPlacement(closestBricks, index)
@@ -510,22 +522,22 @@ def layStackingCourse(index):
 				# actually, for each pair of bricks, try to spread out
 #				bricksToPlace = findBrickPlacements(closestBricks, index)
 
-				print ">>> 2. Brick should be placed at", brickToPlace.getLocationAsLength() , "/", CourseList[index].length()
+				printIf(dbg, ">>> 2. Brick should be placed at", brickToPlace.getLocationAsLength() , "/", CourseList[index].length())
 
 				#if(brickIsSupported(brickToPlace, closestBricks, index) and brickDoesNotOverlap(brickToPlace, index)):
 				if(brickDoesNotOverlap(brickToPlace, index)):
 					# place brick
-					print ">>> 3. Brick PLACED at",brickToPlace.getLocationAsLength()
+					printIf(dbg, ">>> 3. Brick PLACED at",brickToPlace.getLocationAsLength())
 					addBrickToCourse(brickToPlace, index)
 				else:
-					print ">>> 3. Brick NOT PLACED"
+					printIf(dbg, ">>> 3. Brick NOT PLACED")
 
 				# move provisional point to new location
 				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + (BrickWidth * 3/3))
 
 
 		#print BrickList[index]
-		print "okay, next course"
+		printIf(dbg, "okay, next course")
 
 
 def processInput():
@@ -543,8 +555,9 @@ def processInput():
 
 def layCourses():
 	for i in xrange(len(CourseList)):
-		layNormalCourse(i, 0)
-#		layStackingCourse(i)
+#		layNormalCourse(i, 2)
+#		layEdges(i)
+		layStackingCourse(i)
 
 def outputCourses():
 	global BrickList
@@ -582,12 +595,13 @@ BrickRotation
 
 
 def main():
-
 	processInput()
 	layCourses()
 	outputCourses()
 
-	print BrickPoints
+
+
+#	printIf(dbg, BrickPoints)
 if __name__ == "__main__":
 	main()
 
