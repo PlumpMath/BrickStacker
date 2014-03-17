@@ -13,19 +13,14 @@ BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
 DebugList2 = []
 
-def midpoint3D(p1, p2):
-	# get midpoint of endpoints
-	return rs.PointDivide(rs.PointAdd(p1, p2), 2)
+dbg = False 
+dbg2 = True
+"""
+#######################
+#### CLASSES START ####
+#######################
+"""
 
-def roundDecimal(num):
-	global DECIMALPRECISION
-	#ugly but clean
-	return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
-	#return round(num, DECIMALPRECISION)
-
-def printIf(*arg):
-	if(arg[0]):
-		print ' '.join(map(str, list(arg[1:])))
 
 #IMPLEMENT SO THAT EACH BRICK DOES NOT HAVE THE ENTIER CURVE INSIDE OF IT
 class Course:
@@ -64,7 +59,7 @@ class Course:
 
 		DebugList.append([hereTangent])
 		
-		print "getangle between", vector, "And", hereTangent
+		printIf(dbg, "getangle between", vector, "And", hereTangent)
 		# get angle between these fectors, from hereTangent to Vector
 		# THIS NEEDS TO BE RESTRICTED TO THE XY PLANE
 		# which is why we use grasshopper components; python can't restrict to XY plane
@@ -87,9 +82,12 @@ class Brick3D:
 		self.Course = Course
 
 	def setLocationByLength(self, length):
-		print length
+		printIf(dbg, length)
 		if(self.Course.isClosed()):
 			length %= self.Course.length()
+		else:
+			if length > self.Course.length():
+				return False
 		self.curveLenParameter = length
 		self.setLocationByPoint(rs.CurveArcLengthPoint(self.Course.getCurve(), length))
 		self.curveParameter = rs.CurveClosestPoint(self.Course.getCurve(), self.brickCenter)
@@ -139,6 +137,10 @@ class Brick3D:
 	def getCourseLen(self):
 		return self.Course.length()
 
+
+	def getDistancePoint3D(self, point):
+		return rs.Distance(self.getLocationAsPoint(), point)
+
 	def getDistance3D(self, b2):
 		return rs.Distance(self.getLocationAsPoint(), b2.getLocationAsPoint())
 
@@ -152,7 +154,6 @@ class Brick3D:
 	def getMidpoint3D(self, b2):
 		return rs.PointDivide(rs.PointAdd(self.getLocationAsPoint(), b2.getLocationAsPoint()), 2)
 		
-	
 	def getMidpointOnCurve(self, b2):
 		#make sure that they're in order
 		[pb1, pb2] = sorted([self.getCurveParameter(),b2.getCurveParameter()])
@@ -167,7 +168,90 @@ class Brick3D:
 			#vanilla
 			return roundDecimal((pb1 + pb2) / 2)
 
-#
+	@classmethod
+	def newBrickWidthAfterRotation(self, rotation):
+		return math.cos(rotation) * BrickWidth
+
+	@classmethod 
+	def getFacingEndpoints3D(self,b1, b2):
+		global DebugList
+
+		# get the midpoints of the bricks
+		midPoint3D = b1.getMidpoint3D(b2)
+
+		# get all endpoints
+		B1EndPoints3D = b1.getEndpoints3D()
+		B2EndPoints3D = b2.getEndpoints3D()
+
+		# get all distances between midpoint and all endpoints
+		pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
+		pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
+
+		# get closest two endpoints
+		closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
+		closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
+		closestEndpointB1 = B1EndPoints3D[closestEndpointIndexB1]
+		closestEndpointB2 = B2EndPoints3D[closestEndpointIndexB2]
+
+		return [closestEndpointB1, closestEndpointB2]
+
+	@classmethod 
+	def getBearingEndpoints3D(self,b1,b2):
+		#get endpoints
+		endpoints = Brick3D.getFacingEndpoints3D(b1, b2)
+
+	#	DebugList.append(endpoints)
+
+		bothBricks = [b1,b2]
+
+	#	DebugList.append(map(lambda x:x.brickCenter, bothBricks))
+
+		bearingEndpoints = []
+		# get midpoints between these endpoints and midpoints of b1, b2 
+		# REALLY THIS SHOULD BE MIDPOINT OF BEARING IDEAL
+		for i in xrange(len(endpoints)):
+			bearingEndpoints.append(midpoint3D(endpoints[i], bothBricks[i].getLocationAsPoint()))	
+
+	#	DebugList.append(bearingEndpoints)
+
+		return bearingEndpoints
+		
+
+	@classmethod
+	# get distances from this brick to lower bricks - in 3D space.
+	def getClosestTwoBricks3D(self, thisbrick, abricklist):
+
+		thisdistances = map(lambda x: thisbrick.getDistance3D(x), abricklist)
+		#okay, get the indices of the closest midpoint (sort and return keys)
+
+		closestIndex = sorted(range(len(thisdistances)), key=lambda k: thisdistances[k])[0:2]
+
+		#okay, get the locations of the cloeset lower bricks
+		return [abricklist[i] for i in closestIndex]
+
+
+
+"""
+#######################
+####  CLASSES END  ####
+#######################
+"""
+
+
+
+def midpoint3D(p1, p2):
+	# get midpoint of endpoints
+	return rs.PointDivide(rs.PointAdd(p1, p2), 2)
+
+def roundDecimal(num):
+	global DECIMALPRECISION
+	#ugly but clean
+	return float(int((num * 10**DECIMALPRECISION)) / (10**DECIMALPRECISION))
+	#return round(num, DECIMALPRECISION)
+
+def printIf(*arg):
+	if(arg[0]):
+		print ' '.join(map(str, list(arg[1:])))
 
 
 def ListofListsToTree(LOL):
@@ -176,16 +260,18 @@ def ListofListsToTree(LOL):
 		ROTFL.AddRange(LOL[i], GH_Path(i))
 	return ROTFL
 
-def howManyBricksCanWeMake(index):
-	#don't like the name of this method? deal with it
-	curvelen = rs.CurveLength(ContourCurves[index])
-	return [math.ceil(curvelen  / (BrickWidth + GapDomain[0])), math.floor(curvelen / (BrickWidth + GapDomain[1]))]
+def howManyBricksCanWeMake(index, avgrotation=0):
+	#get length of curve
+	curvelen = CourseList[index].length()
+	#return range of brick#
+	newBW = Brick3D.newBrickWidthAfterRotation(avgrotation)
+	return [math.ceil(curvelen  / (newBW + GapDomain[0])), math.floor(curvelen / (newBW + GapDomain[1]))]
 
-def decideBrickNum(index):
-	brickn = howManyBricksCanWeMake(index)
+def decideBrickNum(index, avgrotation=0):
+	brickn = howManyBricksCanWeMake(index, avgrotation)
 	return int(sum(brickn)/len(brickn))
 
-def isBrickSpacingping(thisBrickLocation, index, isClosedCurve=False, curvelen=0):
+def isBrickSpacingOverlapping(thisBrickLocation, index, isClosedCurve=False, curvelen=0):
 	#check to see if the brick overlaps with anything
 	thisdistances = map(lambda x: Brick.distance(thisBrickLocation, x.brickCenter, isClosedCurve, curvelen), BrickList[index])
 	#print "t>>>>>>>>>", thisdistances
@@ -205,83 +291,19 @@ def isCourseFull(index):
 
 	BrickParams = sorted(map(lambda x: x.getLocationAsParameter(), BrickList[index]) + [0, CourseList[index].length()])
 
-	print BrickParams
+	printIf(dbg, BrickParams)
 
 	sortedBrickList =  sorted(BrickList[index], key=lambda k: k.getLocationAsParameter())
 
-	print sortedBrickList
+	printIf(dbg, sortedBrickList)
 
 	for i in xrange(1, len(sortedBrickList)):
 		# you know something has space if there is at least one location in which the distance between bricks > BrickWidth * 2
 		if(sortedBrickList[i - 1].getDistanceOnCurve(sortedBrickList[i]) > BrickWidth * 2):
 			return False
 	
-	print "FULLLLLLLLLLLLLLLLL"
 	return True
 
-
-def getFacingEndpoints3D(b1, b2):
-	global DebugList
-
-#	print "getFacingEndpoints3D"
-	# get the midpoints of the bricks
-	midPoint3D = b1.getMidpoint3D(b2)
-
-	# get all endpoints
-	B1EndPoints3D = b1.getEndpoints3D()
-	B2EndPoints3D = b2.getEndpoints3D()
-
-#	DebugList.append(B1EndPoints3D + B2EndPoints3D)
-#		print "Endpoints = ",endPoints3D
-
-	# get all distances between midpoint and all endpoints
-	pointDistancesB1 = map(lambda x: rs.Distance(midPoint3D, x), B1EndPoints3D)
-	pointDistancesB2 = map(lambda x: rs.Distance(midPoint3D, x), B2EndPoints3D)
-
-#	print "Pb1", pointDistancesB1
-#	print "Pb2", pointDistancesB2
-	# get closest two endpoints
-
-	closestEndpointIndexB1 = sorted(range(len(B1EndPoints3D)), key=lambda k: pointDistancesB1[k])[0]
-	closestEndpointIndexB2 = sorted(range(len(B2EndPoints3D)), key=lambda k: pointDistancesB2[k])[0]
-	closestEndpointB1 = B1EndPoints3D[closestEndpointIndexB1]
-	closestEndpointB2 = B2EndPoints3D[closestEndpointIndexB2]
-
-	return [closestEndpointB1, closestEndpointB2]
-
-
-def getBearingEndpoints3D(b1,b2):
-	#get endpoints
-	endpoints = getFacingEndpoints3D(b1, b2)
-
-#	DebugList.append(endpoints)
-
-	bothBricks = [b1,b2]
-
-#	DebugList.append(map(lambda x:x.brickCenter, bothBricks))
-
-	bearingEndpoints = []
-	# get midpoints between these endpoints and midpoints of b1, b2 
-	# REALLY THIS SHOULD BE MIDPOINT OF BEARING IDEAL
-	for i in xrange(len(endpoints)):
-		bearingEndpoints.append(midpoint3D(endpoints[i], bothBricks[i].getLocationAsPoint()))	
-
-#	DebugList.append(bearingEndpoints)
-
-	return bearingEndpoints
-	
-
-# get distances from this brick to lower bricks - in 3D space.
-def getClosestTwoBricks3D(thisbrick, index):
-	global BrickList
-
-	thisdistances = map(lambda x: thisbrick.getDistance3D(x), BrickList[index])
-	#okay, get the indices of the closest midpoint (sort and return keys)
-
-	closestIndex = sorted(range(len(thisdistances)), key=lambda k: thisdistances[k])[0:2]
-
-	#okay, get the locations of the cloeset lower bricks
-	return [BrickList[index][i] for i in closestIndex]
 
 
 
@@ -290,7 +312,7 @@ def getClosestTwoBricks3D(thisbrick, index):
 def closestEndPoints(midPoint, closestBricks, index):
 	global CourseList
 
-	print midPoint
+	printIf(dbg, midPoint)
 	midPointParam = CourseList[index].getClosestPointAsParameter(midPoint)
 	closestEndpointParams = [[eachlist - (BrickWidth / 2), eachlist + (BrickWidth / 2)] for eachlist in map(lambda x: x.getLocationAsParameter(), closestBricks)]
 #	print "closest bricks = ",map(lambda x: x.getLocationAsParameter(), closestBricks)
@@ -311,14 +333,14 @@ def findBrickBearingPlacement(closestBricks, index):
 #	DebugList.append([midPoint])
 
 	# get the two endpoints closest to each other
-	facingEndpoints = getBearingEndpoints3D(closestBricks[0],closestBricks[1])
+	facingEndpoints = Brick3D.getBearingEndpoints3D(closestBricks[0],closestBricks[1])
 
-#	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
+	DebugList.append([rs.AddLine(facingEndpoints[0], facingEndpoints[1])])
 
 	# get midpoint of endpoints
 	endpointmid = midpoint3D(facingEndpoints[0], facingEndpoints[1])
 
-	DebugList.append([CourseList[index].getCurve()])
+	#DebugList.append([CourseList[index].getCurve()])
 
 	# and project onto our line
 	placementPoint = CourseList[index].getClosestPointAsPoint(endpointmid)	
@@ -335,8 +357,12 @@ def findBrickBearingPlacement(closestBricks, index):
 	rotation = CourseList[index].getRotationByPointVector(placementPoint, placementVector)
 
 #	rotation += (0.05  * (len(CourseList)-index))
-	print "rotation=", rotation
-	DebugList.append([rotation])
+	printIf(dbg, "rotation=", rotation)
+#	DebugList.append([rotation])
+#	printIf(True, "okay distance to attrpt = ", newBrick.getDistancePoint3D(AttractorPoint))
+	if(AttractorPoint != None):
+		printIf(dbg, 20 / math.sqrt(rs.Distance(placementPoint, AttractorPoint)))
+		rotation += 10 / (rs.Distance(placementPoint, AttractorPoint) )
 
 	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
 	return newBrick
@@ -371,7 +397,10 @@ def brickDoesNotOverlap(brickToPlace, index):
 
 	# are there any bricks that are within BrickWidth distance of brickToPlace?
 	for aBrick in (BrickList[index]):
-		if(brickToPlace.getDistance3D(aBrick) < (BrickWidth + BrickSpacingMin)):
+		if(brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)):
+			print "UHOH"
+			print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > but is < ",
+			print (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)
 			return False
 
 	return True
@@ -399,7 +428,10 @@ def layNormalCourse(index, rhythm=0):
 	global CourseList
 	global DebugList2
 
-	brickn = decideBrickNum(index)
+	avgrotation = -0.9
+	newBW = Brick3D.newBrickWidthAfterRotation(avgrotation)
+
+	brickn = decideBrickNum(index, avgrotation)
 #	brickn *= 1.3
 	averageGap = (BrickSpacingMax + BrickSpacingMin) / 2
 
@@ -408,13 +440,17 @@ def layNormalCourse(index, rhythm=0):
 	if(rhythm == 0):
 		provisionalLocation = 0
 	else:
-		provisionalLocation = (index % rhythm) * (BrickWidth / 2)	
+		provisionalLocation = (index % rhythm) * (newBW / 2)	
 
 	# add each brick brick, spaced apart
 	for i in xrange(brickn):
 
+		printIf(dbg, "provis / len", provisionalLocation, CourseList[index].length())
+		if(provisionalLocation > CourseList[index].length()):
+			break
+
 		# make a provisional brick
-		newBrick = Brick3D([0,0,0], -0.3, CourseList[index])
+		newBrick = Brick3D([0,0,0], avgrotation, CourseList[index])
 
 		# move the brick to where we want it to be
 		newBrick.setLocationByLength(provisionalLocation)
@@ -423,7 +459,7 @@ def layNormalCourse(index, rhythm=0):
 		BrickList[index].append(newBrick)
 		
 		# move the new location to the brick width, plus the gap
-		provisionalLocation += BrickWidth + averageGap
+		provisionalLocation += newBW + averageGap
 
 #	print "bricklist=", map(lambda x: x.getLocationAsLength(), BrickList[index])
 
@@ -441,8 +477,8 @@ def layEdges(index):
 def layStackingCourse(index):
 	global BrickList
 	global CourseList
-	
-	dbg = True
+	global dbg
+
 	printIf(dbg, " ")
 	printIf(dbg, "###########################################")
 	printIf(dbg, "##### PLACING BRICK COURSE", index, " ----" )
@@ -465,7 +501,6 @@ def layStackingCourse(index):
 
 				printIf(dbg, "*** COURSE", index,", BRICK #", i)
 				printIf(dbg, " ")
-
 				printIf(dbg, "course underneath =",)
 				printIf(dbg, map(lambda x: x.getLocationAsLength(), BrickList[index-1]))
 			#PROCESS:
@@ -483,7 +518,7 @@ def layStackingCourse(index):
 				printIf(dbg, ">> provisional brick (", i, "/", brickn,") at", provisionalBrick.getLocationAsLength())
 
 				# find two closest bricks 
-				closestBricks = getClosestTwoBricks3D(provisionalBrick, index - 1)
+				closestBricks = Brick3D.getClosestTwoBricks3D(provisionalBrick, BrickList[index - 1])
 				printIf(dbg, ">>> 1. two closest bricks from", provisionalBrick.getLocationAsLength(), "=",map(lambda x:x.getLocationAsLength(), closestBricks), "on curve with len", closestBricks[0].getCourse().length())
 
 				# find where to place bricks on top of these two closest bricks
@@ -499,13 +534,16 @@ def layStackingCourse(index):
 				#if(brickIsSupported(brickToPlace, closestBricks, index) and brickDoesNotOverlap(brickToPlace, index)):
 				if(brickDoesNotOverlap(brickToPlace, index)):
 					# place brick
-					printIf(dbg, ">>> 3. Brick PLACED at",brickToPlace.getLocationAsLength())
+					printIf(dbg2, ">>> 3. Brick PLACED at",brickToPlace.getLocationAsLength())
 					addBrickToCourse(brickToPlace, index)
 				else:
-					printIf(dbg, ">>> 3. Brick NOT PLACED")
+					printIf(dbg2, ">>> 3. Brick NOT PLACED")
 
 				# move provisional point to new location
-				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + (BrickWidth * 3/3))
+				printIf(dbg2, "moving brick", i,"course", index, "provisional point to new location")
+				provisionalBrick.setLocationByLength(brickToPlace.getLocationAsLength() + Brick3D.newBrickWidthAfterRotation(provisionalBrick.getRotation()))
+				printIf(dbg2, "rotation=", brickToPlace.getRotation() ,"newBWafterotation=",Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()))
+				printIf(dbg2, "BW=", BrickWidth)
 
 
 		#print BrickList[index]
