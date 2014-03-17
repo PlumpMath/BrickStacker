@@ -169,35 +169,6 @@ class Brick3D:
 
 #
 
-class Brick:
-	def __init__(self, courseLength, brickCenter, brickRotation):
-		#self.brickWidth = brickWidth
-		self.courseLength = courseLength
-		self.brickCenter = brickCenter
-		self.brickRotation = brickRotation
-
-	@classmethod	
-	def distance(self, b1, b2, isClosedCurve=False, curvelen=0):
-		[b1, b2] = sorted([b1,b2])
-		if(isClosedCurve):
-			return (b2 - b1) % curvelen
-		else:
-			return abs(b1 - b2)
-
-	@classmethod
-	def midpoint(self, b1, b2, isClosedCurve=False, curvelen=0):
-		#make sure that they're in order
-		[b1, b2] = sorted([b1,b2])
-		if(isClosedCurve):
-			if((b2 - b1) <= (curvelen / 2)):
-				#if the two bricks are close enough on a closed curve as to not wrap around
-				return round((b1 + b2) / 2, DECIMALPRECISION)
-			else:
-				#no, they wrap around, accomodate for that
-				return round((b2 + ((curvelen - b2 + b1) / 2)) % curvelen , DECIMALPRECISION)	
-		else:
-			#vanilla
-			return round((b1 + b2) / 2, DECIMALPRECISION)
 
 def ListofListsToTree(LOL):
 	ROTFL = DataTree[object]()
