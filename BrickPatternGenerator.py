@@ -13,8 +13,8 @@ BrickList = [[] for i in xrange(len(ContourCurves))]
 DebugList = []
 DebugList2 = []
 
-dbg = True
-dbg2 = True
+dbg = False
+dbg2 = False
 dbg3 = True
 """
 #######################
@@ -380,7 +380,8 @@ def findBrickBearingPlacement(closestBricks, index):
 #	DebugList.append([rotation])
 #	printIf(True, "okay distance to attrpt = ", newBrick.getDistancePoint3D(AttractorPoint))
 	if(AttractorPoint != None):
-		printIf(dbg, 20 / math.sqrt(rs.Distance(placementPoint, AttractorPoint)))
+		printIf(dbg2, "attrptdist=",rs.Distance(placementPoint, AttractorPoint))
+		printIf(dbg3 , "sqrt=",math.sqrt(rs.Distance(placementPoint, AttractorPoint)))
 		rotation += 10 / (rs.Distance(placementPoint, AttractorPoint) )
 
 	newBrick = Brick3D(placementPoint, rotation, CourseList[index])
@@ -396,9 +397,11 @@ def brickDoesNotOverlap(brickToPlace, index):
 	for aBrick in (BrickList[index]):
 		brickToPlace.getDistance3D(aBrick)
 		#print "brickToPlace=",brickToPlace
-		print "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > "
-		#print (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)
-		if(brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)):
+		printIf(dbg2, "newbrickwidth=",(Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation())))
+		printIf(dbg2, "brickToPlace.getDistance3D(aBrick) (",brickToPlace.getDistance3D(aBrick),") should be > ",)
+		printIf(dbg2, (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin))
+		#if(brickToPlace.getDistance3D(aBrick) < (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin)):
+		if(brickToPlace.getDistance3D(aBrick) - (Brick3D.newBrickWidthAfterRotation(brickToPlace.getRotation()) + BrickSpacingMin) < 0.25):
 			print "UHOH"
 			return False
 
@@ -427,7 +430,7 @@ def layNormalCourse(index, rhythm=0):
 	global CourseList
 	global DebugList2
 
-	avgrotation = -0.9
+	avgrotation = 0.8
 	newBW = Brick3D.newBrickWidthAfterRotation(avgrotation)
 
 	brickn = decideBrickNum(index, avgrotation)
